@@ -34,7 +34,7 @@ sites:
   - name: "GeometryDashWave"
     sitemap_urls:
       - "https://geometrydashwave.io/sitemap.xml"
-    active: true
+    active: false # 无法访问
   - name: "SmashyRoad"
     sitemap_urls:
       - "https://smashy-road.io/sitemap.xml"
@@ -81,6 +81,506 @@ sites:
     game_path_marker: "/game/"
     active: true
 
+  - name: "Wordlenyt"
+    sitemap_urls:
+      - "https://wordlenyt.io/sitemap.xml"
+    active: true
+  - name: "Capybaragame"
+    sitemap_urls:
+      - "https://capybaragame.io/sitemap.xml"
+    active: true
+  - name: "Slidedown"
+    sitemap_urls:
+      - "https://slidedown.io/sitemap.xml"
+    active: true
+  - name: "Wordhurdle"
+    sitemap_urls:
+      - "https://wordhurdle.co/sitemap.xml"
+    active: true
+  - name: "CrossyroadGame"
+    sitemap_urls:
+      - "https://crossyroad-game.io/sitemap.xml"
+    active: true
+  - name: "Escaperoad2d"
+    sitemap_urls:
+      - "https://escaperoad2d.io/sitemap.xml"
+    active: true
+  - name: "Freetopgames"
+    sitemap_urls:
+      - "https://freetopgames.io/sitemap.xml"
+    active: true
+  - name: "Motox3m2"
+    sitemap_urls:
+      - "https://motox3m2.io/sitemap.xml"
+    active: true
+  - name: "Tinyfishing2"
+    sitemap_urls:
+      - "https://tinyfishing2.io/sitemap.xml"
+    active: true
+  - name: "Basketballgameshub"
+    sitemap_urls:
+      - "https://basketballgameshub.com/post-sitemap1.xml"
+    active: true
+  - name: "Chillguyclicker"
+    sitemap_urls:
+      - "https://chillguyclicker.io/sitemap.xml"
+    active: true
+  - name: "Crossyroadonline"
+    sitemap_urls:
+      - "https://crossyroadonline.io/sitemap.xml"
+    active: true
+  - name: "Driftbossgame"
+    sitemap_urls:
+      - "https://driftbossgame.io/sitemap.xml"
+    active: true
+  - name: "Escaperoad"
+    sitemap_urls:
+      - "https://escaperoad.io/sitemap.xml"
+    active: true
+  - name: "Escaperoad2"
+    sitemap_urls:
+      - "https://escaperoad2.io/sitemap.xml"
+    active: true
+  - name: "Gamenora"
+    sitemap_urls:
+      - "https://www.gamenora.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "GeometryWorld"
+    sitemap_urls:
+      - "https://geometry-world.io/sitemap.xml"
+    active: true
+  - name: "Ragdollarchers2"
+    sitemap_urls:
+      - "https://ragdollarchers2.io/sitemap.xml"
+    active: true
+  - name: "Ragdollhit2"
+    sitemap_urls:
+      - "https://ragdollhit2.org/sitemap.xml"
+    active: true
+  - name: "Scratchgamesonline"
+    sitemap_urls:
+      - "https://scratchgamesonline.io/sitemap.xml"
+    active: true
+  - name: "SlopeGameonline"
+    sitemap_urls:
+      - "https://slope-gameonline.io/sitemap.xml"
+    active: true
+  - name: "Slope3online"
+    sitemap_urls:
+      - "https://slope3online.io/sitemap.xml"
+    active: true
+  - name: "Snowrideronline"
+    sitemap_urls:
+      - "https://snowrideronline.io/sitemap.xml"
+    active: true
+  - name: "SportsGames"
+    sitemap_urls:
+      - "https://sports-games.io/sitemap.xml"
+    active: true
+  - name: "Sportsgamesaz"
+    sitemap_urls:
+      - "https://sportsgamesaz.io/sitemap.xml"
+    active: true
+  - name: "Trolllevel"
+    sitemap_urls:
+      - "https://trolllevel.io/sitemap.xml"
+    active: true
+  - name: "Agaronline"
+    sitemap_urls:
+      - "https://agaronline.io/sitemap.xml"
+    active: true
+  - name: "Bitlife2"
+    sitemap_urls:
+      - "https://bitlife2.org/sitemap.xml"
+    active: true
+  - name: "CrossyRoad"
+    sitemap_urls:
+      - "https://crossy-road.io/sitemap.xml"
+    active: true
+  - name: "Curverush"
+    sitemap_urls:
+      - "https://curverush.com/sitemap.xml"
+    active: true
+  - name: "DinosaurgameFree"
+    sitemap_urls:
+      - "https://dinosaurgame-free.io/sitemap.xml"
+    active: true
+  - name: "Drifthunters2"
+    sitemap_urls:
+      - "https://drifthunters2.io/sitemap.xml"
+    active: true
+  - name: "Drivinggames"
+    sitemap_urls:
+      - "https://drivinggames.io/sitemap.xml"
+    active: true
+  - name: "Escaperoad3"
+    sitemap_urls:
+      - "https://escaperoad3.io/sitemap.xml"
+    active: true
+  - name: "Escaperoadcity2"
+    sitemap_urls:
+      - "https://escaperoadcity2.io/sitemap.xml"
+    active: true
+  - name: "Fnfgameonline"
+    sitemap_urls:
+      - "https://fnfgameonline.io/sitemap.xml"
+    active: true
+  - name: "Geometryarrow"
+    sitemap_urls:
+      - "https://geometryarrow.io/sitemap.xml"
+    active: true
+  - name: "Geometrygame"
+    sitemap_urls:
+      - "https://geometrygame.io/sitemap.xml"
+    active: true
+  - name: "Holeonline"
+    sitemap_urls:
+      - "https://holeonline.io/sitemap.xml"
+    active: true
+  - name: "Hotgames"
+    sitemap_urls:
+      - "https://hotgames.io/sitemap.xml"
+    active: true
+  - name: "Maddrive"
+    sitemap_urls:
+      - "https://maddrive.io/sitemap.xml"
+    active: true
+  - name: "Retrofootball"
+    sitemap_urls:
+      - "https://retrofootball.io/sitemap.xml"
+    active: true
+  - name: "Run3dgame"
+    sitemap_urls:
+      - "https://run3dgame.io/sitemap.xml"
+    active: true
+  - name: "Scrach"
+    sitemap_urls:
+      - "https://scrach.io/sitemap.xml"
+    active: true
+  - name: "Sledrider"
+    sitemap_urls:
+      - "https://sledrider.io/sitemap.xml"
+    active: true
+  - name: "Slope2Game"
+    sitemap_urls:
+      - "https://slope2-game.com/sitemap.xml"
+    active: true
+  - name: "Sloperider2"
+    sitemap_urls:
+      - "https://sloperider2.io/sitemap.xml"
+    active: true
+  - name: "Sloperidergame"
+    sitemap_urls:
+      - "https://sloperidergame.org/sitemap.xml"
+    active: true
+  - name: "SnakeGame"
+    sitemap_urls:
+      - "https://snake-game.io/sitemap.xml"
+    active: true
+  - name: "SnowRider"
+    sitemap_urls:
+      - "https://snow-rider.io/sitemap.xml"
+    active: true
+  - name: "Snowrider3d"
+    sitemap_urls:
+      - "https://snowrider3d.com/sitemap.xml"
+    active: true
+  - name: "Snowroad"
+    sitemap_urls:
+      - "https://snowroad.io/sitemap.xml"
+    active: true
+  - name: "Spacewaves2"
+    sitemap_urls:
+      - "https://spacewaves2.org/sitemap.xml"
+    active: true
+  - name: "Speedstarsfree"
+    sitemap_urls:
+      - "https://speedstarsfree.io/sitemap.xml"
+    active: true
+  - name: "Sprunkigames"
+    sitemap_urls:
+      - "https://sprunkigames.io/sitemap.xml"
+    active: true
+  - name: "Topgames"
+    sitemap_urls:
+      - "https://topgames.gg/sitemap.xml"
+    active: true
+  - name: "Trafficroad"
+    sitemap_urls:
+      - "https://trafficroad.io/sitemap.xml"
+    active: true
+  - name: "Trendgames"
+    sitemap_urls:
+      - "https://trendgames.io/sitemap.xml"
+    active: true
+  - name: "Tunnelrushgame"
+    sitemap_urls:
+      - "https://tunnelrushgame.io/sitemap.xml"
+    active: true
+  - name: "WaveRider"
+    sitemap_urls:
+      - "https://wave-rider.io/sitemap.xml"
+    active: true
+  - name: "Wordlewebsite"
+    sitemap_urls:
+      - "https://wordlewebsite.com/sitemap.xml"
+    active: true
+  - name: "Worldguesser"
+    sitemap_urls:
+      - "https://worldguesser.io/sitemap.xml"
+    active: true
+
+  - name: "Driftboss3"
+    sitemap_urls:
+      - "https://driftboss3.io/sitemap.xml"
+    active: true
+  - name: "Maddriving"
+    sitemap_urls:
+      - "https://maddriving.io/sitemap.xml"
+    active: true
+  - name: "Rampxtreme"
+    sitemap_urls:
+      - "https://www.rampxtreme.com/sitemap.xml"
+    active: true
+  - name: "Soflowheelielife"
+    sitemap_urls:
+      - "https://soflowheelielife.io/sitemap.xml"
+    active: true
+  - name: "Spacewavesgame"
+    sitemap_urls:
+      - "https://spacewavesgame.io/sitemap.xml"
+    active: true
+  - name: "Mrflip"
+    sitemap_urls:
+      - "https://mrflip.io/sitemap.xml"
+    active: true
+  - name: "Run3Online"
+    sitemap_urls:
+      - "https://run3-online.io/sitemap.xml"
+    active: true
+  - name: "SnowRider3d"
+    sitemap_urls:
+      - "https://snow-rider3d.io/sitemap.xml"
+    active: true
+  - name: "GolfHit"
+    sitemap_urls:
+      - "https://golf-hit.io/sitemap.xml"
+    active: true
+  - name: "Fnf2"
+    sitemap_urls:
+      - "https://fnf-2.io/sitemap.xml"
+    active: true
+  - name: "Holegame"
+    sitemap_urls:
+      - "https://holegame.io/sitemap.xml"
+    active: true
+  - name: "Iogames"
+    sitemap_urls:
+      - "https://iogames.games/sitemap.xml"
+    active: true
+  - name: "Slope2"
+    sitemap_urls:
+      - "https://slope-2.io/sitemap.xml"
+    active: true
+  - name: "SpeedStarsgame"
+    sitemap_urls:
+      - "https://speed-starsgame.com/sitemap.xml"
+    active: true
+  - name: "FnfGames"
+    sitemap_urls:
+      - "https://fnf-games.io/sitemap.xml"
+    active: true
+  - name: "SmashKarts"
+    sitemap_urls:
+      - "https://smash-karts.org/sitemap.xml"
+    active: true
+  - name: "Trafficrally"
+    sitemap_urls:
+      - "https://trafficrally.io/sitemap.xml"
+    active: true
+  - name: "PapasFreezeria"
+    sitemap_urls:
+      - "https://papas-freezeria.io/sitemap.xml"
+    active: true
+  - name: "Snowrider2"
+    sitemap_urls:
+      - "https://snowrider2.io/sitemap.xml"
+    active: true
+  - name: "RunningGames"
+    sitemap_urls:
+      - "https://running-games.io/sitemap.xml"
+    active: true
+  - name: "Zazgames"
+    sitemap_urls:
+      - "https://zazgames.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Gamesmunch"
+    sitemap_urls:
+      - "https://www.gamesmunch.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Laggedgame"
+    sitemap_urls:
+      - "https://www.laggedgame.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Pigame"
+    sitemap_urls:
+      - "https://www.pigame.cc/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Simple"
+    sitemap_urls:
+      - "https://simple.game/sitemap.xml"
+    active: true
+  - name: "Twoplayergames"
+    sitemap_urls:
+      - "https://www.twoplayergames.org/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "MotoX3m"
+    sitemap_urls:
+      - "https://moto-x3m.io/sitemap.xml"
+    active: true
+  - name: "Crazygamesonline"
+    sitemap_urls:
+      - "https://www.crazygamesonline.com/12000games.xml"
+    active: true
+  - name: "FireboyWatergirl"
+    sitemap_urls:
+      - "https://fireboy-watergirl.com/sitemap.xml"
+    active: true
+  - name: "Hihoy"
+    sitemap_urls:
+      - "https://www.hihoy.com/sitemap-games.xml"
+    active: true
+  - name: "CrazygamesGg"
+    sitemap_urls:
+      - "https://crazygames.gg/post-sitemap.xml"
+    active: true
+  - name: "Wackysteps"
+    sitemap_urls:
+      - "https://wackysteps.com/sitemap.xml"
+    active: true
+  - name: "Madkidgames"
+    sitemap_urls:
+      - "https://www.madkidgames.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Basketrandom"
+    sitemap_urls:
+      - "https://basketrandom.io/sitemap.xml"
+    active: true
+  - name: "TungsahurClicker"
+    sitemap_urls:
+      - "https://tungsahur-clicker.com/sitemap.xml"
+    active: true
+  - name: "Arcadespot"
+    sitemap_urls:
+      - "https://arcadespot.com/sitemap-games-3.xml"
+    active: true
+  - name: "Ggsbaby"
+    sitemap_urls:
+      - "https://ggsbaby.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Sprunke"
+    sitemap_urls:
+      - "https://sprunke.io/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Geometrydashwave"
+    sitemap_urls:
+      - "https://geometrydashwave.com/sitemap.xml"
+    active: true
+  - name: "Elifesimulator"
+    sitemap_urls:
+      - "https://elifesimulator.io/sitemap.xml"
+    active: true
+  - name: "Gamesgo"
+    sitemap_urls:
+      - "https://gamesgo.net/sitemap.xml"
+    active: true
+  - name: "TheFreakcircus"
+    sitemap_urls:
+      - "https://the-freakcircus.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "N2player"
+    sitemap_urls:
+      - "https://2player.co/sitemap.xml"
+    active: true
+  - name: "GeometryFree"
+    sitemap_urls:
+      - "https://geometry-free.com/sitemap.xml"
+    active: true
+  - name: "GeometryOnline"
+    sitemap_urls:
+      - "https://geometry-online.io/sitemap.xml"
+    active: true
+  - name: "Geometrygames"
+    sitemap_urls:
+      - "https://geometrygames.io/sitemap.xml"
+    active: true
+  - name: "Stickmanhookonline"
+    sitemap_urls:
+      - "https://stickmanhookonline.io/sitemap.xml"
+    active: true
+  - name: "Runaway3d"
+    sitemap_urls:
+      - "https://runaway3d.io/sitemap.xml"
+    active: true
+  - name: "Cartoongames"
+    sitemap_urls:
+      - "https://cartoongames.io/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Poorbunnygame"
+    sitemap_urls:
+      - "https://poorbunnygame.com/sitemap.xml"
+    active: true
+  - name: "BasketballRandom"
+    sitemap_urls:
+      - "https://basketball-random.io/sitemap.xml"
+    active: true
+  - name: "Sloperider"
+    sitemap_urls:
+      - "https://sloperider.org/sitemap.xml"
+    active: true
+  - name: "Platformergames"
+    sitemap_urls:
+      - "https://platformergames.io/sitemap.xml"
+    active: true
+  - name: "Sloperungame"
+    sitemap_urls:
+      - "https://sloperungame.io/sitemap.xml"
+    active: true
+  - name: "Boloyun"
+    sitemap_urls:
+      - "https://boloyun.com/sitemaps/games/13"
+    active: true
+  - name: "Crazy3d"
+    sitemap_urls:
+      - "https://crazy3d.org/sitemap-games-ja.xml"
+    active: true
+  - name: "Gamevivu"
+    sitemap_urls:
+      - "https://gamevivu.com/post-sitemap3.xml"
+    active: true
+  - name: "Dordle"
+    sitemap_urls:
+      - "https://dordle.io/sitemap.xml"
+    active: true
+  - name: "Unoonline"
+    sitemap_urls:
+      - "https://unoonline.co/sitemap.xml"
+    active: true
+  - name: "WebGames"
+    sitemap_urls:
+      - "https://web-games.io/sitemap.xml"
+    active: true
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
   secret: "YOUR_SECRET"

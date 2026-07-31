@@ -45,7 +45,7 @@ def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=
 
     try:
         scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, timeout=30)
+        response = scraper.get(url, timeout=10)
         response.raise_for_status()
 
         content = response.content

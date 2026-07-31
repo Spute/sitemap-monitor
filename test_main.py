@@ -206,7 +206,7 @@ def test_process_sitemap_index_recursive(monkeypatch):
             return None
 
     class FakeScraper:
-        def get(self, url, timeout=30):
+        def get(self, url, timeout=10):
             return FakeResponse(payloads[url])
 
     monkeypatch.setattr("sitemap.cloudscraper.create_scraper", lambda: FakeScraper())
