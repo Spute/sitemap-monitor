@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>We've Rebranded — Challenge Rush</title>
+<meta name="description" content="We've moved and rebranded to Challenge Rush. Click through to play at challengerush.com.">
+<link rel="icon" type="image/png" href="favicon.ico">
+<meta http-equiv="refresh" content="10; url=https://challengerush.com/">
+<style>
+@font-face {
+font-family: "Electrolize";
+src: url("Electrolize-Regular.ttf") format("truetype");
+font-weight: 400; font-style: normal; font-display: swap;
+}
+:root {
+--bg: #060d0b;
+--bg-soft: #0b1512;
+--ink: #eafff4;
+--ink-dim: #9fc7b6;
+--accent: #3dff9e;
+--accent-rgb: 61, 255, 158;
+--accent-2: #17c88b;
+--accent-2-rgb: 23, 200, 139;
+--accent-3: #b9ff3d;
+--line: rgba(61, 255, 158, 0.16);
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+min-height: 100vh;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 32px 20px;
+background:
+radial-gradient(1100px 620px at 50% -10%, rgba(var(--accent-rgb), 0.14), transparent 62%),
+radial-gradient(900px 500px at 100% 110%, rgba(23, 200, 139, 0.10), transparent 60%),
+var(--bg);
+color: var(--ink);
+font-family: "Electrolize", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+line-height: 1.65;
+-webkit-font-smoothing: antialiased;
+text-align: center;
+.card {
+width: 100%;
+max-width: 580px;
+background: rgba(15, 28, 23, 0.72);
+border: 1px solid var(--line);
+border-radius: 20px;
+padding: 48px 34px 40px;
+box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(var(--accent-rgb), 0.05);
+backdrop-filter: blur(8px);
+.kicker {
+display: inline-block;
+padding: 6px 15px;
+border: 1px solid rgba(var(--accent-rgb), 0.4);
+border-radius: 999px;
+background: rgba(var(--accent-rgb), 0.06);
+color: var(--accent);
+font-size: 0.78rem;
+letter-spacing: 0.14em;
+text-transform: uppercase;
+margin-bottom: 26px;
+.rebrand-row {
+gap: 18px;
+margin-bottom: 30px;
+flex-wrap: nowrap;
+.brand-old {
+height: 25px;
+width: auto;
+display: block;
+opacity: 0.55;
+filter: grayscale(0.6);
+.brand-new {
+filter: drop-shadow(0 0 12px rgba(var(--accent-rgb), 0.5));
+.arrow {
+width: 30px; height: 30px;
+flex: none;
+animation: nudge 1.4s ease-in-out infinite;
+@keyframes nudge {
+0%, 100% { transform: translateX(0); }
+50% { transform: translateX(6px); }
+h1 {
+font-size: clamp(1.7rem, 5vw, 2.35rem);
+font-weight: 400;
+letter-spacing: 0.04em;
+margin-bottom: 14px;
+background: linear-gradient(90deg, var(--accent), var(--accent-3));
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent;
+text-shadow: 0 0 30px rgba(var(--accent-rgb), 0.25);
+.lead {
+color: var(--ink-dim);
+font-size: 1.04rem;
+max-width: 46ch;
+margin: 0 auto 30px;
+.lead strong { color: var(--ink); font-weight: 400; }
+.cta {
+display: inline-flex;
+gap: 10px;
+padding: 15px 30px;
+border: 2px solid rgba(var(--accent-rgb), 0.55);
+border-radius: 12px;
+background: rgba(var(--accent-rgb), 0.08);
+font-family: inherit;
+font-size: 1.05rem;
+letter-spacing: 0.02em;
+text-decoration: none;
+transition: background 0.16s, border-color 0.16s, box-shadow 0.16s, transform 0.16s;
+box-shadow: 0 0 0 rgba(var(--accent-rgb), 0);
+.cta:hover {
+background: rgba(var(--accent-rgb), 0.16);
+border-color: var(--accent);
+box-shadow: 0 0 26px rgba(var(--accent-rgb), 0.4);
+transform: translateY(-1px);
+.countdown {
+margin-top: 24px;
+font-size: 0.86rem;
+.countdown a { color: var(--accent); text-decoration: none; }
+.countdown a:hover { text-decoration: underline; }
+.countdown #secs { color: var(--accent); }
+.cta .cta-ico { width: 22px; height: 22px; display: block; }
+@media (prefers-reduced-motion: reduce) {
+.arrow { animation: none; }
+</style>
+</head>
+<body>
+<main class="card">
+<span class="kicker">We've Rebranded</span>
+<div class="rebrand-row">
+<img class="brand-old" src="dashmetry-logo-f81x35.webp" alt="Dashmetry (previous brand)">
+<svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+<path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<img class="brand-new" src="challenge-rush-logo.webp" alt="Challenge Rush">
+</div>
+<h1>Same game, new home</h1>
+<p class="lead"><strong>Dashmetry</strong> is now <strong>Challenge Rush</strong>. All your levels, scores and the leaderboard have moved with us — they're waiting at the new address.</p>
+<a class="cta" href="https://challengerush.com/" target="_blank" rel="noopener">
+<img class="cta-ico" src="icon_home_play.png" alt="">
+Continue to challengerush.com
+</a>
+<p class="countdown">Redirecting automatically in <span id="secs">10</span>s… <a href="https://challengerush.com/">go now</a></p>
+</main>
+<script>
+(function () {
+var el = document.getElementById('secs');
+if (!el) return;
+var n = parseInt(el.textContent, 10) || 10;
+var timer = setInterval(function () {
+n -= 1;
+if (n <= 0) { el.textContent = '0'; clearInterval(timer); return; }
+el.textContent = String(n);
+}, 1000);
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"e07ec6062a474a569b00f9f6510c6ee3","r":1}' crossorigin="anonymous"></script>
+</body>
+</html>
