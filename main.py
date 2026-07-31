@@ -16,10 +16,28 @@ def load_config(config_path='config.yaml'):
     with open(config_path) as f:
         return yaml.safe_load(f)
 
-def process_sitemap(url):
+def matches_patterns(url, patterns):
+    """If patterns is empty, accept all URLs; otherwise require a substring match."""
+    if not patterns:
+        return True
+    return any(pattern in url for pattern in patterns)
+
+
+def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=3):
+    """Fetch a sitemap and return page URLs.
+
+    Recurses into <sitemapindex> children. include_sitemap_patterns filters which
+    child sitemap URLs to follow (e.g. only the English locale).
+    """
+    if visited is None:
+        visited = set()
+    if url in visited or max_depth < 0:
+        return []
+    visited.add(url)
+
     try:
         scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, timeout=10)
+        response = scraper.get(url, timeout=30)
         response.raise_for_status()
 
         content = response.content
@@ -27,10 +45,24 @@ def process_sitemap(url):
         if content[:2] == b'\x1f\x8b':  # gzip magic number
             content = gzip.decompress(content)
 
+        if b'<sitemapindex' in content:
+            child_sitemaps = parse_xml(content)
+            urls = []
+            for child in child_sitemaps:
+                if not matches_patterns(child, include_sitemap_patterns):
+                    continue
+                urls.extend(
+                    process_sitemap(
+                        child,
+                        include_sitemap_patterns=include_sitemap_patterns,
+                        visited=visited,
+                        max_depth=max_depth - 1,
+                    )
+                )
+            return urls
         if b'<urlset' in content:
             return parse_xml(content)
-        else:
-            return parse_txt(content.decode('utf-8'))
+        return parse_txt(content.decode('utf-8'))
     except requests.RequestException as e:
         logging.error(f"Error processing {url}: {str(e)}")
         return []
@@ -136,8 +168,12 @@ def main(config_path='config.yaml'):
             
         logging.info(f"处理站点: {site['name']}")
         all_urls = []
+        include_sitemap_patterns = site.get('include_sitemap_patterns')
         for sitemap_url in site['sitemap_urls']:
-            urls = process_sitemap(sitemap_url)
+            urls = process_sitemap(
+                sitemap_url,
+                include_sitemap_patterns=include_sitemap_patterns,
+            )
             all_urls.extend(urls)
             
         # 去重处理

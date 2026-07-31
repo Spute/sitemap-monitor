@@ -6,7 +6,7 @@
 
 ## 功能
 
-- 拉取 XML / TXT sitemap（自动识别 gzip）
+- 拉取 XML / TXT sitemap（自动识别 gzip，递归展开 sitemapindex）
 - 与 `latest/` 快照对比，找出新增 URL
 - 写入 `diff/YYYYMMDD/` 增量记录
 - 通过飞书 Webhook 发送上新通知
@@ -41,6 +41,14 @@ sites:
       - "https://example.com/sitemap.xml"
     active: true
 
+  - name: "CrazyGames"
+    sitemap_urls:
+      - "https://www.crazygames.com/sitemap-index.xml"
+    # 展开 sitemapindex 时，只跟进匹配的子 sitemap（子串匹配）
+    include_sitemap_patterns:
+      - "https://www.crazygames.com/en/"
+    active: true
+
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
   secret: "YOUR_SECRET"
@@ -50,6 +58,8 @@ storage:
 ```
 
 - `active: false` 可暂时跳过某个站点
+- `include_sitemap_patterns` 可选；用于过滤 `sitemapindex` 中要继续抓取的子 sitemap
+- 自动识别并递归展开 `sitemapindex` / `urlset` / 文本 sitemap（含 gzip）
 - `retention_days` 控制 `diff/` 目录保留天数
 
 ## 运行
@@ -96,5 +106,6 @@ uv add <package>           # 添加运行依赖
 uv add --dev <package>     # 添加开发依赖
 uv lock                    # 更新锁文件
 uv run pytest              # 运行测试
+uv run pytest -v -s             # 运行测试, -s 打印print, -v显示详情
 uv run python main.py      # 运行监控
 ```

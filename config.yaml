@@ -74,6 +74,9 @@ sites:
   - name: "CrazyGames"
     sitemap_urls:
       - "https://www.crazygames.com/sitemap-index.xml"
+    # 只展开英文子 sitemap（index 内各语种各一份）
+    include_sitemap_patterns:
+      - "https://www.crazygames.com/en/"
     active: true
 
 feishu:
