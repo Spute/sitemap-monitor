@@ -1,0 +1,85 @@
+sites:
+  - name: "PokeRogue"
+    sitemap_urls:
+      - "https://pokerogue.io/sitemap.xml"
+    active: true
+  - name: "Wordle2"
+    sitemap_urls:
+      - "https://wordle2.io/sitemap.xml"
+    active: true
+  - name: "1Games"
+    sitemap_urls:
+      - "https://1games.io/sitemap.xml"
+    active: true
+  - name: "AZGames"
+    sitemap_urls:
+      - "https://azgames.io/sitemap.xml"
+    active: true
+  - name: "CookieClicker2"
+    sitemap_urls:
+      - "https://cookie-clicker2.com/sitemap.xml"
+    active: true
+  - name: "Phrazle"
+    sitemap_urls:
+      - "https://phrazle.io/sitemap.xml"
+    active: true
+  - name: "Sprunki"
+    sitemap_urls:
+      - "https://sprunki.org/sitemap.xml"
+    active: true
+  - name: "ThatsNotMyNeighbor"
+    sitemap_urls:
+      - "https://thatsnot-myneighbor.io/sitemap.xml"
+    active: true
+  - name: "GeometryDashWave"
+    sitemap_urls:
+      - "https://geometrydashwave.io/sitemap.xml"
+    active: true
+  - name: "SmashyRoad"
+    sitemap_urls:
+      - "https://smashy-road.io/sitemap.xml"
+    active: true
+  - name: "GeometryDashIO"
+    sitemap_urls:
+      - "https://geometrylite.io/sitemap.xml"
+    active: true
+  - name: "Dashmetry"
+    sitemap_urls:
+      - "https://dashmetry.com/sitemap.xml"
+    active: true
+  - name: "BloxGames"
+    sitemap_urls:
+      - "https://bloxgames.io/sitemap.xml"
+    active: true
+  - name: "GeometryLiteGame"
+    sitemap_urls:
+      - "https://geometrylitegame.io/sitemap.xml"
+    active: true
+  - name: "GeometryLite"
+    sitemap_urls:
+      - "https://geometrylite.github.io/sitemap.xml"
+    active: true
+  - name: "OhGames"
+    sitemap_urls:
+      - "https://ohgames.io/sitemap.xml"
+    active: true
+  - name: "WooGames"
+    sitemap_urls:
+      - "https://woogames.io/sitemap.xml"
+    active: true
+  - name: "NowGames"
+    sitemap_urls:
+      - "https://nowgames.io/sitemap.xml"
+    active: true
+  - name: "CrazyGames"
+    sitemap_urls:
+      - "https://www.crazygames.com/sitemap-index.xml"
+    active: true
+
+feishu:
+  webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
+  secret: "YOUR_SECRET"
+
+storage:
+  retention_days: 7
+  data_dir: "./data"
