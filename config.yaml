@@ -42,7 +42,7 @@ sites:
   - name: "GeometryDashIO"
     sitemap_urls:
       - "https://geometrylite.io/sitemap.xml"
-    active: true
+    active: false # 无法访问
   - name: "Dashmetry"
     sitemap_urls:
       - "https://dashmetry.com/sitemap.xml"
@@ -54,7 +54,7 @@ sites:
   - name: "GeometryLiteGame"
     sitemap_urls:
       - "https://geometrylitegame.io/sitemap.xml"
-    active: true
+    active: false # 无法访问
   - name: "GeometryLite"
     sitemap_urls:
       - "https://geometrylite.github.io/sitemap.xml"
@@ -77,6 +77,8 @@ sites:
     # 只展开英文子 sitemap（index 内各语种各一份）
     include_sitemap_patterns:
       - "https://www.crazygames.com/en/"
+    # 仅游戏页；slug 取 path 最后一段
+    game_path_marker: "/game/"
     active: true
 
 feishu:
@@ -84,5 +86,9 @@ feishu:
   secret: "YOUR_SECRET"
 
 storage:
-  retention_days: 7
-  data_dir: "./data"
+  db_path: "./data/games.db"
+
+heat:
+  burst_window_days: 7
+  alert_site_threshold: 2
+  events_retention_days: 90

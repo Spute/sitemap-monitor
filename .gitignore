@@ -82,3 +82,6 @@ ehthumbs.db
 *.temp
 tmp/
 temp/
+
+# Local pytest artifacts
+pytest-cache-files-*/

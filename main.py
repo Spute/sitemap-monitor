@@ -1,223 +1,82 @@
-import os
-import json
-import requests
-import cloudscraper
-import yaml
-import gzip
-import logging
-from datetime import datetime, timedelta
-from pathlib import Path
-from bs4 import BeautifulSoup
+"""Sitemap Monitor 入口：抓取 → 提 slug → 入库 → 跨站爆发告警。"""
 
-# 设置日志记录
+import logging
+from datetime import datetime
+
+from config_loader import load_config
+from notify import build_burst_card, send_feishu_notification
+from sitemap import process_sitemap
+from slug import to_game_entries
+from store import GameStore
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def load_config(config_path='config.yaml'):
-    with open(config_path) as f:
-        return yaml.safe_load(f)
 
-def matches_patterns(url, patterns):
-    """If patterns is empty, accept all URLs; otherwise require a substring match."""
-    if not patterns:
-        return True
-    return any(pattern in url for pattern in patterns)
+def process_site(site, store, today, burst_window_days):
+    """处理单个站点：抓 sitemap、提游戏词、与 DB 同步。
 
-
-def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=3):
-    """Fetch a sitemap and return page URLs.
-
-    Recurses into <sitemapindex> children. include_sitemap_patterns filters which
-    child sitemap URLs to follow (e.g. only the English locale).
+    返回本次该站首次见到的 slug 列表（用于后续爆发告警过滤）。
     """
-    if visited is None:
-        visited = set()
-    if url in visited or max_depth < 0:
-        return []
-    visited.add(url)
+    site_name = site['name']
+    marker = site.get('game_path_marker')
+    logging.info(f"处理站点: {site_name}")
 
-    try:
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, timeout=30)
-        response.raise_for_status()
+    all_urls = []
+    include_sitemap_patterns = site.get('include_sitemap_patterns')
+    for sitemap_url in site['sitemap_urls']:
+        urls = process_sitemap(
+            sitemap_url,
+            include_sitemap_patterns=include_sitemap_patterns,
+        )
+        all_urls.extend(urls)
 
-        content = response.content
-        # 智能检测gzip格式
-        if content[:2] == b'\x1f\x8b':  # gzip magic number
-            content = gzip.decompress(content)
+    entries = to_game_entries(all_urls, game_path_marker=marker)
+    newly_seen = store.sync_site(site_name, entries, today, burst_window_days)
 
-        if b'<sitemapindex' in content:
-            child_sitemaps = parse_xml(content)
-            urls = []
-            for child in child_sitemaps:
-                if not matches_patterns(child, include_sitemap_patterns):
-                    continue
-                urls.extend(
-                    process_sitemap(
-                        child,
-                        include_sitemap_patterns=include_sitemap_patterns,
-                        visited=visited,
-                        max_depth=max_depth - 1,
-                    )
-                )
-            return urls
-        if b'<urlset' in content:
-            return parse_xml(content)
-        return parse_txt(content.decode('utf-8'))
-    except requests.RequestException as e:
-        logging.error(f"Error processing {url}: {str(e)}")
-        return []
-    except Exception as e:
-        logging.error(f"Unexpected error processing {url}: {str(e)}")
-        return []
+    if newly_seen:
+        logging.info(f"{site_name}: 新增 {len(newly_seen)} 个游戏词")
+    else:
+        logging.info(f"没有新增游戏: {site_name}")
+    return newly_seen
 
-def parse_xml(content):
-    urls = []
-    soup = BeautifulSoup(content, 'xml')
-    for loc in soup.find_all('loc'):
-        url = loc.get_text().strip()
-        if url:
-            urls.append(url)
-    return urls
-
-def parse_txt(content):
-    return [line.strip() for line in content.splitlines() if line.strip()]
-
-def save_latest(site_name, new_urls):
-    base_dir = Path('latest')
-    
-    # 创建latest目录（与日期目录同级）
-    latest_dir = base_dir
-    latest_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 保存latest.json
-    latest_file = latest_dir / f'{site_name}.json'
-    with open(latest_file, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(new_urls))
-
-def save_diff(site_name, new_urls):
-    base_dir = Path('diff')
-        
-    # 创建日期目录
-    today = datetime.now().strftime('%Y%m%d')
-    date_dir = base_dir / today
-    date_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 保存当日新增数据
-    file_path = date_dir / f'{site_name}.json'
-    mode = 'a' if file_path.exists() else 'w'
-    with open(file_path, mode, encoding='utf-8') as f:
-        if mode == 'a':
-            f.write('\n--------------------------------\n')  # 添加分隔符
-        f.write('\n'.join(new_urls) + '\n')  # 确保每个URL后都有换行
-
-def compare_data(site_name, new_urls):
-    latest_file = Path('latest') / f'{site_name}.json'
-    
-    if not latest_file.exists():
-        return []
-        
-    with open(latest_file) as f:
-        last_urls = set(f.read().splitlines())
-    
-    return [url for url in new_urls if url not in last_urls]
-
-def send_feishu_notification(new_urls, config, site_name):
-    if not new_urls:
-        logging.info("没有新增游戏")
-        return
-    
-    webhook_url = config['feishu']['webhook_url']
-    secret = config['feishu'].get('secret')
-    
-    message = {
-        "msg_type": "interactive",
-        "card": {
-            "header": {
-                "title": {"tag": "plain_text", "content": f"🎮 {site_name} 游戏上新通知"},
-                "template": "green"
-            },
-            "elements": [
-                {
-                    "tag": "div",
-                    "text": {
-                        "tag": "lark_md",
-                        "content": f"**今日新增 {len(new_urls)} 款游戏**\n\n" + "\n".join(f"• {url}" for url in new_urls[:10])
-                    }
-                }
-            ]
-        }
-    }
-    
-    for attempt in range(3):  # 重试机制
-        try:
-            resp = requests.post(webhook_url, json=message)
-            resp.raise_for_status()
-            logging.info("飞书通知发送成功")
-            return
-        except requests.RequestException as e:
-            logging.error(f"飞书通知发送失败: {str(e)}")
-            if attempt < 2:
-                logging.info("重试发送通知...")
 
 def main(config_path='config.yaml'):
     config = load_config(config_path)
-    
-    for site in config['sites']:
-        if not site['active']:
-            continue
-            
-        logging.info(f"处理站点: {site['name']}")
-        all_urls = []
-        include_sitemap_patterns = site.get('include_sitemap_patterns')
-        for sitemap_url in site['sitemap_urls']:
-            urls = process_sitemap(
-                sitemap_url,
-                include_sitemap_patterns=include_sitemap_patterns,
-            )
-            all_urls.extend(urls)
-            
-        # 去重处理
-        unique_urls = list({url: None for url in all_urls}.keys())
-        new_urls = compare_data(site['name'], unique_urls)
-        
-        save_latest(site['name'], unique_urls)
-        if new_urls:
-            logging.info(f"发送飞书通知: {site['name']}")
-            save_diff(site['name'], new_urls)
-            send_feishu_notification(new_urls, config, site['name'])
-        else:
-            logging.info(f"没有新增游戏: {site['name']}")
-        # 清理旧数据
-        cleanup_old_data(site['name'], config)
+    storage = config.get('storage', {})
+    heat = config.get('heat', {})
+    burst_window_days = heat.get('burst_window_days', 7)
+    alert_threshold = heat.get('alert_site_threshold', 2)
+    events_retention_days = heat.get('events_retention_days', 90)
+    db_path = storage.get('db_path', './data/games.db')
 
-def cleanup_old_data(site_name, config):
-    data_dir = Path('diff')
-    if not data_dir.exists():
-        return
-        
-    # 获取配置中的保留天数
-    retention_days = config.get('retention_days', 7)
-    cutoff = datetime.now() - timedelta(days=retention_days)
-    
-    # 遍历所有日期文件夹
-    for date_dir in data_dir.glob('*'):
-        if not date_dir.is_dir():
-            continue
-            
-        try:
-            # 解析文件夹名称为日期
-            dir_date = datetime.strptime(date_dir.name, '%Y%m%d')
-            if dir_date < cutoff:
-                # 删除整个日期文件夹
-                for f in date_dir.glob('*.json'):
-                    f.unlink()
-                date_dir.rmdir()
-                logging.info(f"已删除过期文件夹: {date_dir.name}")
-        except ValueError:
-            # 忽略非日期格式的文件夹
-            continue
-        except Exception as e:
-            logging.error(f"删除文件夹时出错: {str(e)}")
+    store = GameStore(db_path)
+    today = datetime.now().strftime('%Y-%m-%d')
+
+    touched_slugs = []
+    try:
+        for site in config['sites']:
+            if not site.get('active', True):
+                continue
+            touched_slugs.extend(
+                process_site(site, store, today, burst_window_days)
+            )
+
+        # 只对「本次新出现」且已达跨站阈值的词告警
+        burst = store.burst_games_involving(
+            touched_slugs, burst_window_days, alert_threshold
+        )
+        if burst:
+            logging.info(f"跨站爆发 {len(burst)} 个游戏词，发送飞书通知")
+            send_feishu_notification(
+                build_burst_card(burst, burst_window_days), config
+            )
+        else:
+            logging.info("本次无跨站爆发游戏词")
+
+        store.cleanup_events(events_retention_days)
+    finally:
+        store.close()
+
 
 if __name__ == '__main__':
     main()
