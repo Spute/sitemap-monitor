@@ -12,10 +12,13 @@ class GameStore:
     - games: 汇总 site_count / heat_score
     """
 
-    def __init__(self, db_path):
+    def __init__(self, db_path, *, check_same_thread=True):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(
+            self.db_path,
+            check_same_thread=check_same_thread,
+        )
         self.conn.row_factory = sqlite3.Row
         self._init_schema()
 
@@ -181,3 +184,137 @@ class GameStore:
         cutoff = (datetime.now() - timedelta(days=retention_days)).strftime('%Y-%m-%d')
         self.conn.execute('DELETE FROM events WHERE date < ?', (cutoff,))
         self.conn.commit()
+
+    # --- 查询接口（API 用） ---
+
+    def list_games(self, *, q=None, min_site_count=1, limit=50, offset=0):
+        """按热度分页列出游戏词；q 对 slug 做子串模糊匹配。"""
+        clauses = ['site_count >= ?']
+        params = [min_site_count]
+        if q:
+            clauses.append('slug LIKE ?')
+            params.append(f'%{q.lower()}%')
+        where = ' AND '.join(clauses)
+        params.extend([limit, offset])
+        rows = self.conn.execute(
+            f"""
+            SELECT slug, first_seen, last_seen, site_count, heat_score
+            FROM games
+            WHERE {where}
+            ORDER BY heat_score DESC, site_count DESC, slug
+            LIMIT ? OFFSET ?
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_game(self, slug):
+        """单个游戏词汇总；不存在返回 None。"""
+        row = self.conn.execute(
+            """
+            SELECT slug, first_seen, last_seen, site_count, heat_score
+            FROM games
+            WHERE slug = ?
+            """,
+            (slug,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_sightings(self, slug):
+        """某游戏词在各站的收录详情。"""
+        rows = self.conn.execute(
+            """
+            SELECT site, url, first_seen, last_seen
+            FROM sightings
+            WHERE slug = ?
+            ORDER BY first_seen, site
+            """,
+            (slug,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_events(
+        self,
+        *,
+        slug=None,
+        site=None,
+        since=None,
+        window_days=None,
+        limit=100,
+        offset=0,
+    ):
+        """近期新增事件；可按 slug / site / 日期窗口过滤。"""
+        clauses = []
+        params = []
+        if slug:
+            clauses.append('slug = ?')
+            params.append(slug)
+        if site:
+            clauses.append('site = ?')
+            params.append(site)
+        if since:
+            clauses.append('date >= ?')
+            params.append(since)
+        elif window_days is not None:
+            cutoff = (datetime.now() - timedelta(days=window_days)).strftime('%Y-%m-%d')
+            clauses.append('date >= ?')
+            params.append(cutoff)
+        where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+        params.extend([limit, offset])
+        rows = self.conn.execute(
+            f"""
+            SELECT date, slug, site, url
+            FROM events
+            {where}
+            ORDER BY date DESC, slug, site
+            LIMIT ? OFFSET ?
+            """,
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_sites(self):
+        """各站收录游戏数与最近更新日。"""
+        rows = self.conn.execute(
+            """
+            SELECT site,
+                   COUNT(*) AS game_count,
+                   MIN(first_seen) AS first_seen,
+                   MAX(last_seen) AS last_seen
+            FROM sightings
+            GROUP BY site
+            ORDER BY game_count DESC, site
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_site_games(self, site, *, limit=100, offset=0):
+        """某站收录的游戏列表（按 first_seen 倒序，便于看新上架）。"""
+        rows = self.conn.execute(
+            """
+            SELECT s.slug, s.url, s.first_seen, s.last_seen,
+                   g.site_count, g.heat_score
+            FROM sightings s
+            LEFT JOIN games g ON g.slug = s.slug
+            WHERE s.site = ?
+            ORDER BY s.first_seen DESC, s.slug
+            LIMIT ? OFFSET ?
+            """,
+            (site, limit, offset),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def stats(self):
+        """库级概览。"""
+        games = self.conn.execute('SELECT COUNT(*) AS n FROM games').fetchone()['n']
+        sightings = self.conn.execute('SELECT COUNT(*) AS n FROM sightings').fetchone()['n']
+        events = self.conn.execute('SELECT COUNT(*) AS n FROM events').fetchone()['n']
+        sites = self.conn.execute(
+            'SELECT COUNT(DISTINCT site) AS n FROM sightings'
+        ).fetchone()['n']
+        return {
+            'games': games,
+            'sightings': sightings,
+            'events': events,
+            'sites': sites,
+        }

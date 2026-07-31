@@ -50,11 +50,20 @@ https://1games.io/action.games             → 丢弃（分类页）
 
 ## 功能
 
-- 拉取 XML / TXT sitemap（自动识别 gzip，递归展开 sitemapindex）
+### 监控侧（`main.py`）
+
+- 拉取 XML / TEXT sitemap（自动识别 gzip，递归展开 sitemapindex）
+- 网络超时 / 连接重置时自动重试 1 次；抓取无 URL 时打 warning
 - 提取并过滤游戏 slug，写入 SQLite
-- 按站检测新增游戏词，记录每日事件
-- 跨站爆发热度评估与飞书通知
+- 按站检测新增游戏词，记录每日 events
+- 跨站爆发热度评估；达阈值时飞书通知
 - 按配置清理过期 events
+
+### 查询侧（`api.py` / FastAPI）
+
+- 提供 REST 查询接口，数据来自 `data/games.db`
+- 内置 OpenAPI 文档（Swagger / ReDoc），响应字段均有中文说明
+- 覆盖：爆发列表、热榜搜索、一词详情、事件流、按站查看
 
 ## 环境要求
 
@@ -111,23 +120,110 @@ heat:
 - `include_sitemap_patterns` 可选；过滤 sitemapindex 中要继续抓取的子 sitemap
 - `game_path_marker` 可选；用于 CrazyGames 这类路径较深的站点
 
-## 运行
+## 运行监控
 
 ```bash
 uv run python main.py
 ```
 
-查询示例（安装 sqlite3 后）：
+## 查询 API
+
+先确保已跑过监控、库中有数据，再启动服务：
 
 ```bash
-sqlite3 data/games.db "
-  SELECT slug, COUNT(DISTINCT site) AS n
-  FROM events
-  WHERE date >= date('now', '-7 day')
-  GROUP BY slug
-  HAVING n >= 2
-  ORDER BY n DESC;
-"
+uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
+
+| 文档 | 地址 |
+|---|---|
+| Swagger UI | http://127.0.0.1:8000/docs |
+| ReDoc | http://127.0.0.1:8000/redoc |
+
+在 `/docs` 中可展开每个接口的 **Schema**，查看返回字段的中文说明与示例。
+
+### 接口一览
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/health` | 健康检查，确认服务与 DB 路径 |
+| GET | `/stats` | 库概览：游戏词 / 收录关系 / 事件 / 站点数 |
+| GET | `/games/burst` | **跨站爆发**（及时发现主入口） |
+| GET | `/games` | 热榜；可按 slug 模糊搜索、按最少站点数过滤 |
+| GET | `/games/{slug}` | 一词详情：热度汇总 + 各站 URL + 近窗事件 |
+| GET | `/events` | 新增事件流（某站首次收录某词） |
+| GET | `/sites` | 已有数据的站点列表及收录量 |
+| GET | `/sites/{site}/games` | 某站游戏列表（按该站上新时间倒序） |
+
+### 常用查询参数
+
+| 接口 | 参数 | 说明 |
+|---|---|---|
+| `/games/burst` | `window_days` | 爆发窗口天数，默认 `config.heat.burst_window_days`（7） |
+| `/games/burst` | `threshold` | 窗口内最少站点数，默认 `alert_site_threshold`（2） |
+| `/games` | `q` | slug 子串搜索，如 `sprint` |
+| `/games` | `min_site_count` | 最少跨站数；`2` 表示只看多站游戏 |
+| `/games/{slug}` | `event_window_days` | 详情里附带近窗事件的天数 |
+| `/events` | `slug` / `site` / `window_days` | 按词、站、天数筛选事件 |
+| 多数列表接口 | `limit` / `offset` | 分页 |
+
+### 返回字段说明（核心）
+
+**游戏汇总（`GameOut`，见于 `/games`、`/games/{slug}`）**
+
+| 字段 | 含义 |
+|---|---|
+| `slug` | 游戏关键词（URL 路径归一化结果） |
+| `first_seen` / `last_seen` | 全局首次 / 最近见到日期（YYYY-MM-DD） |
+| `site_count` | 存量热度：当前有多少站收录 |
+| `heat_score` | 综合热度 = `site_count + 2 × 近窗爆发站点数` |
+
+**爆发项（`BurstGameOut`，见于 `/games/burst`）**
+
+| 字段 | 含义 |
+|---|---|
+| `slug` | 爆发中的游戏词 |
+| `burst_sites` | 近窗内新增站点数（爆发强度） |
+| `sites` | 近窗内相关站点名，逗号分隔 |
+| `site_count` | 当前存量站点数（可大于 `burst_sites`） |
+| `heat_score` | 综合热度分 |
+
+**收录明细（`SightingOut`）**
+
+| 字段 | 含义 |
+|---|---|
+| `site` | 站点名（与 `config.yaml` 中 `name` 一致） |
+| `url` | 该站游戏页完整 URL |
+| `first_seen` / `last_seen` | 该站首次 / 最近见到日期 |
+
+**事件（`EventOut`，见于 `/events`、详情中的 `recent_events`）**
+
+| 字段 | 含义 |
+|---|---|
+| `date` | 该站首次收录该词的日期 |
+| `slug` / `site` / `url` | 游戏词、站点、当时记录的 URL |
+
+**站点概况（`SiteOut`）**
+
+| 字段 | 含义 |
+|---|---|
+| `site` | 站点名 |
+| `game_count` | 该站收录的游戏词数量 |
+| `first_seen` / `last_seen` | 该站数据最早 / 最近更新日期 |
+
+### 调用示例
+
+```bash
+# 近 7 天跨站爆发（≥2 站）
+curl "http://127.0.0.1:8000/games/burst"
+
+# 热榜：至少 3 站收录
+curl "http://127.0.0.1:8000/games?min_site_count=3&limit=20"
+
+# 查某个游戏词
+curl "http://127.0.0.1:8000/games/hill-sprint"
+
+# 某站最近上新
+curl "http://127.0.0.1:8000/sites/1Games/games?limit=20"
 ```
 
 ## 测试
@@ -141,14 +237,16 @@ uv run pytest
 
 ```text
 .
-├── main.py                 # 入口编排
+├── main.py                 # 监控入口编排
+├── api.py                  # FastAPI 查询服务
+├── schemas.py              # API 响应模型（OpenAPI）
 ├── slug.py                 # URL → 游戏词提取与噪音过滤
 ├── sitemap.py              # sitemap 拉取与解析
 ├── store.py                # SQLite（sightings / events / games）
 ├── notify.py               # 飞书跨站爆发通知
 ├── config_loader.py        # 配置加载
 ├── config.yaml             # 站点 / 热度 / 通知配置
-├── test_main.py
+├── test_main.py / test_api.py
 ├── data/games.db           # SQLite（唯一数据存储）
 └── .github/workflows/      # GitHub Actions 定时监控
 ```
@@ -170,4 +268,5 @@ uv lock                    # 更新锁文件
 uv run pytest              # 运行测试
 uv run pytest -v -s        # 运行测试详情
 uv run python main.py      # 运行监控
+uv run uvicorn api:app --reload --port 8000   # 启动查询 API
 ```
