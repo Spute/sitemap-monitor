@@ -221,6 +221,33 @@ def test_process_sitemap_index_recursive(monkeypatch):
     ]
 
 
+def test_fetch_sitemap_retries_once(monkeypatch):
+    import requests
+    from sitemap import fetch_sitemap_content
+
+    calls = {"n": 0}
+
+    class FakeResponse:
+        content = b"https://example.com/a\n"
+
+        def raise_for_status(self):
+            return None
+
+    class FakeScraper:
+        def get(self, url, timeout=10):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise requests.exceptions.ReadTimeout("timed out")
+            return FakeResponse()
+
+    monkeypatch.setattr("sitemap.cloudscraper.create_scraper", lambda: FakeScraper())
+    monkeypatch.setattr("sitemap.time.sleep", lambda _: None)
+
+    content = fetch_sitemap_content("https://example.com/sitemap.xml")
+    assert content == b"https://example.com/a\n"
+    assert calls["n"] == 2
+
+
 def test_process_sitemap_live():
     urls = process_sitemap("https://1games.io/sitemap.xml")
     assert isinstance(urls, list)

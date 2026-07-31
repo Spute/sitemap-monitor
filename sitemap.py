@@ -2,10 +2,16 @@
 
 import gzip
 import logging
+import time
 
 import cloudscraper
 import requests
 from bs4 import BeautifulSoup
+
+# 超时 / 连接重置等多属瞬时网络问题，失败后重试 1 次
+FETCH_TIMEOUT = 10
+FETCH_RETRIES = 1
+FETCH_RETRY_DELAY_SEC = 1
 
 
 def matches_patterns(url, patterns):
@@ -31,11 +37,34 @@ def parse_txt(content):
     return [line.strip() for line in content.splitlines() if line.strip()]
 
 
+def fetch_sitemap_content(url):
+    """拉取 sitemap 原始内容；网络错误时重试一次。失败返回 None。"""
+    last_error = None
+    attempts = FETCH_RETRIES + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            scraper = cloudscraper.create_scraper()
+            response = scraper.get(url, timeout=FETCH_TIMEOUT)
+            response.raise_for_status()
+            return response.content
+        except requests.RequestException as e:
+            last_error = e
+            if attempt <= FETCH_RETRIES:
+                logging.warning(
+                    f"拉取 sitemap 失败，准备重试 ({attempt}/{FETCH_RETRIES}): {url} ({e})"
+                )
+                time.sleep(FETCH_RETRY_DELAY_SEC)
+            else:
+                logging.error(f"Error processing {url}: {last_error}")
+    return None
+
+
 def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=3):
     """拉取 sitemap，返回页面 URL 列表。
 
     遇到 sitemapindex 会递归子 sitemap；可用 include_sitemap_patterns
     只跟进匹配的子项（例如只抓英文 locale）。
+    抓取成功但未解析到任何 URL 时打 warning，便于发现失效 sitemap。
     """
     if visited is None:
         visited = set()
@@ -44,21 +73,28 @@ def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=
     visited.add(url)
 
     try:
-        scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, timeout=10)
-        response.raise_for_status()
+        content = fetch_sitemap_content(url)
+        if content is None:
+            return []
+        if not content:
+            logging.warning(f"sitemap 响应为空: {url}")
+            return []
 
-        content = response.content
         # gzip magic number
         if content[:2] == b'\x1f\x8b':
             content = gzip.decompress(content)
 
         if b'<sitemapindex' in content:
             child_sitemaps = parse_xml(content)
+            if not child_sitemaps:
+                logging.warning(f"sitemapindex 无子项: {url}")
+                return []
             urls = []
+            matched = 0
             for child in child_sitemaps:
                 if not matches_patterns(child, include_sitemap_patterns):
                     continue
+                matched += 1
                 urls.extend(
                     process_sitemap(
                         child,
@@ -67,13 +103,22 @@ def process_sitemap(url, include_sitemap_patterns=None, visited=None, max_depth=
                         max_depth=max_depth - 1,
                     )
                 )
+            if matched == 0:
+                logging.warning(
+                    f"sitemapindex 子项均未匹配 include_sitemap_patterns: {url}"
+                )
+            elif not urls:
+                logging.warning(f"sitemapindex 展开后无 URL: {url}")
             return urls
+
         if b'<urlset' in content:
-            return parse_xml(content)
-        return parse_txt(content.decode('utf-8'))
-    except requests.RequestException as e:
-        logging.error(f"Error processing {url}: {str(e)}")
-        return []
+            urls = parse_xml(content)
+        else:
+            urls = parse_txt(content.decode('utf-8', errors='ignore'))
+
+        if not urls:
+            logging.warning(f"sitemap 无 URL 内容: {url}")
+        return urls
     except Exception as e:
         logging.error(f"Unexpected error processing {url}: {str(e)}")
         return []
