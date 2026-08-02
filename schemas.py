@@ -187,6 +187,10 @@ class BurstGameOut(BaseModel):
                     "sites": "1Games,AZGames,Sprunki,Wordle2",
                     "site_count": 5,
                     "heat_score": 13.0,
+                    "first_seen": "2026-07-29",
+                    "first_site": "1Games",
+                    "first_url": "https://1games.io/hill-sprint",
+                    "today_sites": 2,
                 }
             ]
         }
@@ -207,13 +211,33 @@ class BurstGameOut(BaseModel):
     )
     site_count: Optional[int] = Field(
         default=None,
-        description="当前存量站点数（可能大于 burst_sites，含更早收录的站）",
+        description="截止今天累计收录站点数（可能大于 burst_sites，含更早收录的站）",
         examples=[5],
     )
     heat_score: Optional[float] = Field(
         default=None,
         description="综合热度分：site_count + 2 × 近窗爆发站点数",
         examples=[13.0],
+    )
+    first_seen: Optional[str] = Field(
+        default=None,
+        description="该词最早被收录的日期（YYYY-MM-DD）",
+        examples=["2026-07-29"],
+    )
+    first_site: Optional[str] = Field(
+        default=None,
+        description="最早收录该词的站点名",
+        examples=["1Games"],
+    )
+    first_url: Optional[str] = Field(
+        default=None,
+        description="最早收录站上的游戏页 URL，可用于跳转",
+        examples=["https://1games.io/hill-sprint"],
+    )
+    today_sites: Optional[int] = Field(
+        default=None,
+        description="今天新增收录该词的站点数",
+        examples=[2],
     )
 
 

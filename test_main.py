@@ -156,6 +156,15 @@ def test_game_store_burst(tmp_path):
         assert len(burst) == 1
         assert burst[0]["slug"] == "hill-sprint"
         assert burst[0]["burst_sites"] == 2
+        assert burst[0]["first_site"] == "1Games"
+        assert burst[0]["first_url"] == "https://1games.io/hill-sprint"
+        assert burst[0]["first_seen"] == today
+        assert burst[0]["today_sites"] == 2
+        assert burst[0]["site_count"] == 2
+        assert burst[0]["site_links"] == [
+            {"site": "1Games", "url": "https://1games.io/hill-sprint"},
+            {"site": "Wordle2", "url": "https://wordle2.io/hill-sprint"},
+        ]
 
         involving = store.burst_games_involving(
             ["hill-sprint", "solo-game"],

@@ -1,11 +1,11 @@
 """FastAPI 查询服务：跨站热游 / 爆发 / 站点收录。
 
 启动：
-    uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
+    uv run uvicorn api:app --reload --host 0.0.0.0 --port 8001
 
 文档：
-    Swagger UI  → http://127.0.0.1:8000/docs
-    ReDoc       → http://127.0.0.1:8000/redoc
+    Swagger UI  → http://127.0.0.1:8001/docs
+    ReDoc       → http://127.0.0.1:8001/redoc
 """
 
 from contextlib import asynccontextmanager

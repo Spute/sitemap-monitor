@@ -5,18 +5,40 @@ import logging
 import requests
 
 
+def _md_link(text, url):
+    """飞书 lark_md 可点击链接；无 URL 时退回纯文本。"""
+    if url:
+        return f"[{text}]({url})"
+    return text
+
+
 def build_burst_card(burst_games, window_days):
-    """构造飞书互动卡片：展示近窗跨站爆发的游戏词。"""
+    """构造飞书互动卡片：以关键词为维度展示跨站爆发信息。"""
     lines = []
     for g in burst_games[:20]:
-        sites = (g.get('sites') or '').replace(',', ', ')
+        first_site = g.get('first_site') or '未知'
+        first_seen = g.get('first_seen') or '未知'
+        first_url = g.get('first_url')
+        today_sites = g.get('today_sites') or 0
+        site_count = g.get('site_count') or g.get('burst_sites') or 0
+
+        site_links = g.get('site_links')
+        if site_links:
+            sites_md = ', '.join(
+                _md_link(item['site'], item.get('url')) for item in site_links
+            )
+        else:
+            sites_md = (g.get('sites') or '').replace(',', ', ') or '—'
+
         lines.append(
-            f"• **{g['slug']}** — {g['burst_sites']} 站 / 总量 {g.get('site_count') or g['burst_sites']}\n"
-            f"  {sites}"
+            f"• **{_md_link(g['slug'], first_url)}**\n"
+            f"  最早：{_md_link(first_site, first_url)}（{first_seen}）\n"
+            f"  今日新增：{today_sites} 站｜累计：{site_count} 站\n"
+            f"  近 {window_days} 天新增：{sites_md}"
         )
     body = (
         f"**近 {window_days} 天跨站爆发 {len(burst_games)} 个游戏词**\n\n"
-        + ("\n".join(lines) if lines else "（无）")
+        + ("\n\n".join(lines) if lines else "（无）")
     )
     return {
         "msg_type": "interactive",

@@ -126,18 +126,33 @@ heat:
 uv run python main.py
 ```
 
+## 手动推送飞书（基于当前数据库）
+
+不重新抓取 sitemap，直接读取 `data/games.db` 中的爆发结果并发飞书：
+
+```bash
+# 推送近窗全部爆发词
+uv run python push_burst.py
+
+# 只推送今天有新增站点的词
+uv run python push_burst.py --today
+
+# 只预览卡片内容，不实际发送
+uv run python push_burst.py --dry-run
+```
+
 ## 查询 API
 
 先确保已跑过监控、库中有数据，再启动服务：
 
 ```bash
-uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn api:app --reload --host 0.0.0.0 --port 8001
 ```
 
 | 文档 | 地址 |
 |---|---|
-| Swagger UI | http://127.0.0.1:8000/docs |
-| ReDoc | http://127.0.0.1:8000/redoc |
+| Swagger UI | http://127.0.0.1:8001/docs |
+| ReDoc | http://127.0.0.1:8001/redoc |
 
 在 `/docs` 中可展开每个接口的 **Schema**，查看返回字段的中文说明与示例。
 
@@ -184,8 +199,12 @@ uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
 | `slug` | 爆发中的游戏词 |
 | `burst_sites` | 近窗内新增站点数（爆发强度） |
 | `sites` | 近窗内相关站点名，逗号分隔 |
-| `site_count` | 当前存量站点数（可大于 `burst_sites`） |
+| `site_count` | 截止今天累计收录站点数（可大于 `burst_sites`） |
 | `heat_score` | 综合热度分 |
+| `first_site` | 最早收录该词的站点 |
+| `first_url` | 最早收录站上的游戏页 URL |
+| `first_seen` | 该词最早被收录的日期 |
+| `today_sites` | 今天新增收录该词的站点数 |
 
 **收录明细（`SightingOut`）**
 
@@ -214,16 +233,16 @@ uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 # 近 7 天跨站爆发（≥2 站）
-curl "http://127.0.0.1:8000/games/burst"
+curl "http://127.0.0.1:8001/games/burst"
 
 # 热榜：至少 3 站收录
-curl "http://127.0.0.1:8000/games?min_site_count=3&limit=20"
+curl "http://127.0.0.1:8001/games?min_site_count=3&limit=20"
 
 # 查某个游戏词
-curl "http://127.0.0.1:8000/games/hill-sprint"
+curl "http://127.0.0.1:8001/games/hill-sprint"
 
 # 某站最近上新
-curl "http://127.0.0.1:8000/sites/1Games/games?limit=20"
+curl "http://127.0.0.1:8001/sites/1Games/games?limit=20"
 ```
 
 ## 测试
@@ -238,6 +257,7 @@ uv run pytest
 ```text
 .
 ├── main.py                 # 监控入口编排
+├── push_burst.py           # 基于当前 DB 手动推送飞书
 ├── api.py                  # FastAPI 查询服务
 ├── schemas.py              # API 响应模型（OpenAPI）
 ├── slug.py                 # URL → 游戏词提取与噪音过滤
@@ -268,5 +288,8 @@ uv lock                    # 更新锁文件
 uv run pytest              # 运行测试
 uv run pytest -v -s        # 运行测试详情
 uv run python main.py      # 运行监控
-uv run uvicorn api:app --reload --port 8000   # 启动查询 API
+uv run python push_burst.py           # 基于当前 DB 推送飞书
+uv run python push_burst.py --today   # 只推今天有新增的词
+uv run python push_burst.py --dry-run # 预览卡片不发送
+uv run uvicorn api:app --reload --port 8001   # 启动查询 API
 ```

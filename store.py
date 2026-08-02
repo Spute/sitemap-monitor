@@ -152,15 +152,43 @@ class GameStore:
         return newly_seen
 
     def burst_games(self, window_days, threshold):
-        """近 window_days 天内，新增站点数 ≥ threshold 的游戏词（爆发列表）。"""
-        cutoff = (datetime.now() - timedelta(days=window_days)).strftime('%Y-%m-%d')
+        """近 window_days 天内，新增站点数 ≥ threshold 的游戏词（爆发列表）。
+
+        额外附带关键词维度信息：
+        - first_site / first_seen：最早收录该词的站点与日期
+        - today_sites：今天新增的站点数
+        - site_count：截止今天累计收录站点数
+        """
+        now = datetime.now()
+        today = now.strftime('%Y-%m-%d')
+        cutoff = (now - timedelta(days=window_days)).strftime('%Y-%m-%d')
         rows = self.conn.execute(
             """
             SELECT e.slug,
                    COUNT(DISTINCT e.site) AS burst_sites,
                    GROUP_CONCAT(DISTINCT e.site) AS sites,
                    g.site_count,
-                   g.heat_score
+                   g.heat_score,
+                   g.first_seen,
+                   (
+                       SELECT s.site
+                       FROM sightings s
+                       WHERE s.slug = e.slug
+                       ORDER BY s.first_seen, s.site
+                       LIMIT 1
+                   ) AS first_site,
+                   (
+                       SELECT s.url
+                       FROM sightings s
+                       WHERE s.slug = e.slug
+                       ORDER BY s.first_seen, s.site
+                       LIMIT 1
+                   ) AS first_url,
+                   (
+                       SELECT COUNT(DISTINCT ev.site)
+                       FROM events ev
+                       WHERE ev.slug = e.slug AND ev.date = ?
+                   ) AS today_sites
             FROM events e
             LEFT JOIN games g ON g.slug = e.slug
             WHERE e.date >= ?
@@ -168,9 +196,39 @@ class GameStore:
             HAVING burst_sites >= ?
             ORDER BY burst_sites DESC, g.heat_score DESC, e.slug
             """,
-            (cutoff, threshold),
+            (today, cutoff, threshold),
         ).fetchall()
-        return [dict(r) for r in rows]
+        result = [dict(r) for r in rows]
+        self._attach_burst_site_links(result, cutoff)
+        return result
+
+    def _attach_burst_site_links(self, burst_games, cutoff):
+        """为爆发列表附带近窗各站游戏页 URL，供飞书卡片跳转。"""
+        if not burst_games:
+            return
+        slugs = [g['slug'] for g in burst_games]
+        placeholders = ','.join('?' for _ in slugs)
+        rows = self.conn.execute(
+            f"""
+            SELECT slug, site, url
+            FROM events
+            WHERE date >= ? AND slug IN ({placeholders})
+            ORDER BY date, site
+            """,
+            (cutoff, *slugs),
+        ).fetchall()
+        urls = {}
+        for r in rows:
+            urls.setdefault(r['slug'], {})
+            # 同一站取最早一条事件 URL
+            urls[r['slug']].setdefault(r['site'], r['url'])
+        for g in burst_games:
+            by_site = urls.get(g['slug'], {})
+            site_names = [s for s in (g.get('sites') or '').split(',') if s]
+            g['site_links'] = [
+                {'site': name, 'url': by_site.get(name)}
+                for name in site_names
+            ]
 
     def burst_games_involving(self, slugs, window_days, threshold):
         """爆发列表中与本次 touched slugs 有交集的子集（避免每次全量告警）。"""
