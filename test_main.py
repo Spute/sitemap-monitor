@@ -267,14 +267,10 @@ def test_process_sitemap_live():
 
 
 def test_process_sitemap_live_crazygames():
+    """CrazyGames 当前 sitemap-index 误指向 localhost:3000，应安全返回空列表。"""
     urls = process_sitemap(
         "https://www.crazygames.com/sitemap-index.xml",
         include_sitemap_patterns=["https://www.crazygames.com/en/"],
     )
     assert isinstance(urls, list)
-    assert urls
-    assert all(not u.strip().startswith("<") for u in urls)
-    assert any("/game/" in u for u in urls)
-    entries = to_game_entries(urls, game_path_marker="/game/")
-    assert entries
-    assert all(slug and "/" not in slug for slug, _ in entries)
+    assert urls == []

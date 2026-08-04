@@ -37,16 +37,33 @@ def parse_txt(content):
     return [line.strip() for line in content.splitlines() if line.strip()]
 
 
+def _get_sitemap(url):
+    """优先 cloudscraper（过 Cloudflare）；遇 403/401/429 再回退普通 requests。"""
+    scraper = cloudscraper.create_scraper()
+    try:
+        response = scraper.get(url, timeout=FETCH_TIMEOUT)
+        response.raise_for_status()
+        return response.content
+    except requests.HTTPError as e:
+        status = getattr(e.response, "status_code", None)
+        if status not in (401, 403, 429):
+            raise
+        response = requests.get(
+            url,
+            timeout=FETCH_TIMEOUT,
+            headers={"User-Agent": "Mozilla/5.0"},
+        )
+        response.raise_for_status()
+        return response.content
+
+
 def fetch_sitemap_content(url):
     """拉取 sitemap 原始内容；网络错误时重试一次。失败返回 None。"""
     last_error = None
     attempts = FETCH_RETRIES + 1
     for attempt in range(1, attempts + 1):
         try:
-            scraper = cloudscraper.create_scraper()
-            response = scraper.get(url, timeout=FETCH_TIMEOUT)
-            response.raise_for_status()
-            return response.content
+            return _get_sitemap(url)
         except requests.RequestException as e:
             last_error = e
             if attempt <= FETCH_RETRIES:

@@ -46,7 +46,7 @@ sites:
   - name: "Dashmetry"
     sitemap_urls:
       - "https://dashmetry.com/sitemap.xml"
-    active: true
+    active: false # 已改版至 challengerush.com，sitemap 返回 HTML 落地页
   - name: "BloxGames"
     sitemap_urls:
       - "https://bloxgames.io/sitemap.xml"
@@ -79,7 +79,7 @@ sites:
       - "https://www.crazygames.com/en/"
     # 仅游戏页；slug 取 path 最后一段
     game_path_marker: "/game/"
-    active: true
+    active: false # sitemap 误配为 localhost:3000，暂时不可用
 
   - name: "Wordlenyt"
     sitemap_urls:
@@ -437,7 +437,7 @@ sites:
     active: true
   - name: "Twoplayergames"
     sitemap_urls:
-      - "https://www.twoplayergames.org/sitemap.xml"
+      - "https://www.twoplayergames.org/sitemap-games.xml"
     game_path_marker: "/game/"
     active: true
   - name: "MotoX3m"
@@ -447,6 +447,7 @@ sites:
   - name: "Crazygamesonline"
     sitemap_urls:
       - "https://www.crazygamesonline.com/12000games.xml"
+    game_path_marker: "/game/"
     active: true
   - name: "FireboyWatergirl"
     sitemap_urls:
@@ -455,6 +456,7 @@ sites:
   - name: "Hihoy"
     sitemap_urls:
       - "https://www.hihoy.com/sitemap-games.xml"
+    game_path_marker: "/game/"
     active: true
   - name: "CrazygamesGg"
     sitemap_urls:
@@ -480,10 +482,13 @@ sites:
   - name: "Arcadespot"
     sitemap_urls:
       - "https://arcadespot.com/sitemap-games-3.xml"
+    game_path_marker: "/game/"
     active: true
   - name: "Ggsbaby"
     sitemap_urls:
-      - "https://ggsbaby.com/sitemap.xml"
+      - "https://ggsbaby.com/sitemap-games-1.xml"
+      - "https://ggsbaby.com/sitemap-games-2.xml"
+      - "https://ggsbaby.com/sitemap-games-3.xml"
     game_path_marker: "/game/"
     active: true
   - name: "Sprunke"
@@ -494,7 +499,7 @@ sites:
   - name: "Geometrydashwave"
     sitemap_urls:
       - "https://geometrydashwave.com/sitemap.xml"
-    active: true
+    active: false # DNS 无法解析
   - name: "Elifesimulator"
     sitemap_urls:
       - "https://elifesimulator.io/sitemap.xml"
@@ -515,19 +520,19 @@ sites:
   - name: "GeometryFree"
     sitemap_urls:
       - "https://geometry-free.com/sitemap.xml"
-    active: true
+    active: false # DNS 无法解析
   - name: "GeometryOnline"
     sitemap_urls:
       - "https://geometry-online.io/sitemap.xml"
-    active: true
+    active: false # 站点已关闭 (410)
   - name: "Geometrygames"
     sitemap_urls:
       - "https://geometrygames.io/sitemap.xml"
-    active: true
+    active: false # DNS 无法解析
   - name: "Stickmanhookonline"
     sitemap_urls:
       - "https://stickmanhookonline.io/sitemap.xml"
-    active: true
+    active: false # 返回 436，不可访问
   - name: "Runaway3d"
     sitemap_urls:
       - "https://runaway3d.io/sitemap.xml"
@@ -560,6 +565,7 @@ sites:
   - name: "Boloyun"
     sitemap_urls:
       - "https://boloyun.com/sitemaps/games/13"
+    game_path_marker: "/oyun/"
     active: true
   - name: "Crazy3d"
     sitemap_urls:
