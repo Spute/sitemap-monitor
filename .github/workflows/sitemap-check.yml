@@ -15,7 +15,7 @@ on:
   # 定时执行（GitHub cron 为 UTC）
   schedule:
     - cron: '0 22 * * *'  # 北京时间 06:00
-    - cron: '0 4 * * *'   # 北京时间 12:00
+    - cron: '0 3 * * *'   # 北京时间 12:00，防止排队提前一个小时
   # 支持在 Actions 页面手动触发
   workflow_dispatch:
 
