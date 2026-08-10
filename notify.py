@@ -32,7 +32,7 @@ def build_burst_card(burst_games, window_days):
 
         lines.append(
             f"• **{_md_link(g['slug'], first_url)}**\n"
-            f"  最早：{_md_link(first_site, first_url)}（{first_seen}）\n"
+            f"  近窗最早：{_md_link(first_site, first_url)}（{first_seen}）\n"
             f"  今日新增：{today_sites} 站｜累计：{site_count} 站\n"
             f"  近 {window_days} 天新增：{sites_md}"
         )

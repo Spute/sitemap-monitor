@@ -221,17 +221,17 @@ class BurstGameOut(BaseModel):
     )
     first_seen: Optional[str] = Field(
         default=None,
-        description="该词最早被收录的日期（YYYY-MM-DD）",
+        description="近窗内该词最早新增的日期（YYYY-MM-DD），不含窗外历史",
         examples=["2026-07-29"],
     )
     first_site: Optional[str] = Field(
         default=None,
-        description="最早收录该词的站点名",
+        description="近窗内最早新增该词的站点名",
         examples=["1Games"],
     )
     first_url: Optional[str] = Field(
         default=None,
-        description="最早收录站上的游戏页 URL，可用于跳转",
+        description="近窗内最早新增站上的游戏页 URL，可用于跳转",
         examples=["https://1games.io/hill-sprint"],
     )
     today_sites: Optional[int] = Field(

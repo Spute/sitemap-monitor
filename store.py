@@ -91,6 +91,12 @@ class GameStore:
             (date, slug, site, url),
         )
 
+    @staticmethod
+    def window_cutoff(window_days):
+        """近 window_days 个自然日（含今天）的起始日期 YYYY-MM-DD。"""
+        days = max(int(window_days), 1)
+        return (datetime.now() - timedelta(days=days - 1)).strftime('%Y-%m-%d')
+
     def refresh_game(self, slug, burst_window_days):
         """按 sightings + 近窗 events 重算 games 汇总行。
 
@@ -110,7 +116,7 @@ class GameStore:
         if not stats or not stats['site_count']:
             return
 
-        cutoff = (datetime.now() - timedelta(days=burst_window_days)).strftime('%Y-%m-%d')
+        cutoff = self.window_cutoff(burst_window_days)
         burst = self.conn.execute(
             """
             SELECT COUNT(DISTINCT site) AS n
@@ -152,16 +158,15 @@ class GameStore:
         return newly_seen
 
     def burst_games(self, window_days, threshold):
-        """近 window_days 天内，新增站点数 ≥ threshold 的游戏词（爆发列表）。
+        """近 window_days 个自然日（含今天）内，新增站点数 ≥ threshold 的游戏词。
 
-        额外附带关键词维度信息：
-        - first_site / first_seen：最早收录该词的站点与日期
+        额外附带关键词维度信息（飞书/API 共用，均只看近窗 events）：
+        - first_site / first_seen / first_url：近窗内最早新增的站点、日期与 URL
         - today_sites：今天新增的站点数
-        - site_count：截止今天累计收录站点数
+        - site_count：截止今天累计收录站点数（全量）
         """
-        now = datetime.now()
-        today = now.strftime('%Y-%m-%d')
-        cutoff = (now - timedelta(days=window_days)).strftime('%Y-%m-%d')
+        today = datetime.now().strftime('%Y-%m-%d')
+        cutoff = self.window_cutoff(window_days)
         rows = self.conn.execute(
             """
             SELECT e.slug,
@@ -169,19 +174,19 @@ class GameStore:
                    GROUP_CONCAT(DISTINCT e.site) AS sites,
                    g.site_count,
                    g.heat_score,
-                   g.first_seen,
+                   MIN(e.date) AS first_seen,
                    (
-                       SELECT s.site
-                       FROM sightings s
-                       WHERE s.slug = e.slug
-                       ORDER BY s.first_seen, s.site
+                       SELECT e2.site
+                       FROM events e2
+                       WHERE e2.slug = e.slug AND e2.date >= ?
+                       ORDER BY e2.date, e2.site
                        LIMIT 1
                    ) AS first_site,
                    (
-                       SELECT s.url
-                       FROM sightings s
-                       WHERE s.slug = e.slug
-                       ORDER BY s.first_seen, s.site
+                       SELECT e2.url
+                       FROM events e2
+                       WHERE e2.slug = e.slug AND e2.date >= ?
+                       ORDER BY e2.date, e2.site
                        LIMIT 1
                    ) AS first_url,
                    (
@@ -196,7 +201,7 @@ class GameStore:
             HAVING burst_sites >= ?
             ORDER BY burst_sites DESC, g.heat_score DESC, e.slug
             """,
-            (today, cutoff, threshold),
+            (cutoff, cutoff, today, cutoff, threshold),
         ).fetchall()
         result = [dict(r) for r in rows]
         self._attach_burst_site_links(result, cutoff)
@@ -314,9 +319,8 @@ class GameStore:
             clauses.append('date >= ?')
             params.append(since)
         elif window_days is not None:
-            cutoff = (datetime.now() - timedelta(days=window_days)).strftime('%Y-%m-%d')
             clauses.append('date >= ?')
-            params.append(cutoff)
+            params.append(self.window_cutoff(window_days))
         where = ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
         params.extend([limit, offset])
         rows = self.conn.execute(
