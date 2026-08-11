@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from build_trend_urls import DEFAULT_ANCHOR, build_trends_url
+from notify import build_burst_card, slug_to_trends_keyword
 from sitemap import matches_patterns, parse_txt, parse_xml, process_sitemap
 from slug import extract_slug, is_game_slug, to_game_entries
 from store import GameStore
@@ -255,6 +257,48 @@ def test_fetch_sitemap_retries_once(monkeypatch):
     content = fetch_sitemap_content("https://example.com/sitemap.xml")
     assert content == b"https://example.com/a\n"
     assert calls["n"] == 2
+
+
+def test_slug_to_trends_keyword():
+    assert slug_to_trends_keyword("hill-sprint") == "hill sprint"
+    assert slug_to_trends_keyword("  tap-road-2 ") == "tap road 2"
+
+
+def test_build_burst_card_includes_trends_links():
+    card = build_burst_card(
+        [
+            {
+                "slug": "hill-sprint",
+                "first_site": "1Games",
+                "first_seen": "2026-08-11",
+                "first_url": "https://1games.io/hill-sprint",
+                "today_sites": 1,
+                "site_count": 2,
+                "sites": "1Games,Wordle2",
+                "site_links": [
+                    {"site": "1Games", "url": "https://1games.io/hill-sprint"},
+                    {"site": "Wordle2", "url": "https://wordle2.io/hill-sprint"},
+                ],
+            },
+            {
+                "slug": "tap-road",
+                "first_site": "1Games",
+                "first_seen": "2026-08-11",
+                "first_url": "https://1games.io/tap-road",
+                "today_sites": 2,
+                "site_count": 2,
+                "sites": "1Games,Wordle2",
+            },
+        ],
+        window_days=7,
+    )
+    body = card["card"]["elements"][0]["text"]["content"]
+    hill_url = build_trends_url(["hill sprint", DEFAULT_ANCHOR])
+    tap_url = build_trends_url(["tap road", DEFAULT_ANCHOR])
+    assert f"[Trends]({hill_url})" in body
+    assert f"[Trends]({tap_url})" in body
+    assert "Google Trends 对比查询" in body
+    assert "第 1 批：hill sprint, tap road" in body
 
 
 def test_process_sitemap_live():

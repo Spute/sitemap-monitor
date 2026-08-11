@@ -138,7 +138,7 @@ uv run python push_burst.py
 uv run python push_burst.py --today
 
 # 只预览卡片内容，不实际发送
-uv run python push_burst.py --dry-run
+uv run python push_burst.py --today --dry-run
 ```
 
 ## 查询 API
