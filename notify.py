@@ -27,19 +27,20 @@ def _trends_url_for_slug(slug: str) -> str:
     return build_trends_url([keyword, DEFAULT_ANCHOR])
 
 
-def _trends_batch_section(slugs: list[str]) -> str:
-    """将本次挑选的游戏词分批生成 Trends 对比链接。"""
+def _trends_batch_urls(slugs: list[str]) -> list[str]:
+    """将本次挑选的游戏词分批生成 Trends 对比链接，每批一条 URL。"""
     keywords = [slug_to_trends_keyword(s) for s in slugs if slug_to_trends_keyword(s)]
     if not keywords:
+        return []
+    return [item["url"] for item in build_trends_urls(keywords)]
+
+
+def _trends_batch_section(slugs: list[str]) -> str:
+    """将本次挑选的游戏词分批生成 Trends 对比链接，以代码块列出 URL。"""
+    urls = _trends_batch_urls(slugs)
+    if not urls:
         return ""
-    batches = build_trends_urls(keywords)
-    lines = []
-    for i, item in enumerate(batches, 1):
-        # 锚定词始终在末尾，展示时省略
-        games = list(item["keywords"][:-1]) or list(item["keywords"])
-        label = ", ".join(games)
-        lines.append(f"• {_md_link(f'第 {i} 批：{label}', item['url'])}")
-    return "**Google Trends 对比查询**\n" + "\n".join(lines)
+    return "**Google Trends 对比查询**\n```\n" + "\n".join(urls) + "\n```"
 
 
 def build_burst_card(burst_games, window_days):
@@ -70,11 +71,11 @@ def build_burst_card(burst_games, window_days):
             f"  近 {window_days} 天新增：{sites_md}"
         )
 
-    batch_section = _trends_batch_section([g['slug'] for g in shown])
     parts = [
         f"**近 {window_days} 天跨站爆发 {len(burst_games)} 个游戏词**",
         "\n\n".join(lines) if lines else "（无）",
     ]
+    batch_section = _trends_batch_section([g['slug'] for g in shown])
     if batch_section:
         parts.append(batch_section)
     body = "\n\n".join(parts)

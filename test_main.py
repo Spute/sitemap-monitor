@@ -297,8 +297,12 @@ def test_build_burst_card_includes_trends_links():
     tap_url = build_trends_url(["tap road", DEFAULT_ANCHOR])
     assert f"[Trends]({hill_url})" in body
     assert f"[Trends]({tap_url})" in body
-    assert "Google Trends 对比查询" in body
-    assert "第 1 批：hill sprint, tap road" in body
+    batch_url = build_trends_url(
+        ["hill sprint", "tap road", DEFAULT_ANCHOR]
+    )
+    assert "**Google Trends 对比查询**" in body
+    assert f"```\n{batch_url}\n```" in body
+    assert "第 1 批" not in body
 
 
 def test_process_sitemap_live():
