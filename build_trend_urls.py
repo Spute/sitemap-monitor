@@ -35,7 +35,7 @@ def build_trends_url(
     date: str = DEFAULT_DATE,
     geo: str = DEFAULT_GEO,
 ) -> str:
-    """生成单条 explore URL；保留 keywords 顺序（通常末尾为锚定词）。
+    """生成单条 explore URL；保留 keywords 顺序（通常首位为锚定词）。
 
     geo 为空（或仅空白）时表示全球，URL 不附带 geo 参数。
     """
@@ -61,7 +61,7 @@ def batch_keywords(
     anchor: str = DEFAULT_ANCHOR,
     batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> list[list[str]]:
-    """将游戏名按 batch_size 分批，每批末尾追加锚定词。"""
+    """将游戏名按 batch_size 分批，每批首位插入锚定词。"""
     cleaned = [g.strip() for g in games if g and g.strip()]
     if not cleaned:
         raise ValueError("未提供游戏关键词")
@@ -77,7 +77,7 @@ def batch_keywords(
     batches: list[list[str]] = []
     for i in range(0, len(cleaned), batch_size):
         chunk = cleaned[i : i + batch_size]
-        batches.append([*chunk, anchor])
+        batches.append([anchor, *chunk])
     return batches
 
 
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--anchor",
         default=DEFAULT_ANCHOR,
-        help=f'每批末尾追加的锚定词（默认："{DEFAULT_ANCHOR}"）',
+        help=f'每批首位插入的锚定词（默认："{DEFAULT_ANCHOR}"）',
     )
     p.add_argument(
         "--batch-size",

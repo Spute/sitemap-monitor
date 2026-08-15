@@ -24,7 +24,7 @@ def _trends_url_for_slug(slug: str) -> str:
     keyword = slug_to_trends_keyword(slug)
     if not keyword:
         return ""
-    return build_trends_url([keyword, DEFAULT_ANCHOR])
+    return build_trends_url([DEFAULT_ANCHOR, keyword])
 
 
 def _trends_batch_urls(slugs: list[str]) -> list[str]:

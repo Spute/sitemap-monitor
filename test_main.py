@@ -293,12 +293,12 @@ def test_build_burst_card_includes_trends_links():
         window_days=7,
     )
     body = card["card"]["elements"][0]["text"]["content"]
-    hill_url = build_trends_url(["hill sprint", DEFAULT_ANCHOR])
-    tap_url = build_trends_url(["tap road", DEFAULT_ANCHOR])
+    hill_url = build_trends_url([DEFAULT_ANCHOR, "hill sprint"])
+    tap_url = build_trends_url([DEFAULT_ANCHOR, "tap road"])
     assert f"[Trends]({hill_url})" in body
     assert f"[Trends]({tap_url})" in body
     batch_url = build_trends_url(
-        ["hill sprint", "tap road", DEFAULT_ANCHOR]
+        [DEFAULT_ANCHOR, "hill sprint", "tap road"]
     )
     assert "**Google Trends 对比查询**" in body
     assert f"```\n{batch_url}\n```" in body
