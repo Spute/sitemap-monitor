@@ -958,6 +958,64 @@ sites:
     sitemap_urls:
       - "https://bloodmoney2.app/sitemap.xml"
     active: true
+  - name: "Soccerrandom"
+    sitemap_urls:
+      - "https://soccerrandom.io/sitemap.xml"
+    active: true
+  - name: "Dummiesworldcup"
+    sitemap_urls:
+      - "https://dummiesworldcup.io/sitemap.xml"
+    active: true
+  - name: "GrannyGames"
+    sitemap_urls:
+      - "https://granny-games.com/sitemap.xml"
+    active: true
+  - name: "Stickhook"
+    sitemap_urls:
+      - "https://stickhook.io/sitemap.xml"
+    active: true
+  - name: "Granny2"
+    sitemap_urls:
+      - "https://granny2.io/sitemap.xml"
+    active: true
+  - name: "Agargame"
+    sitemap_urls:
+      - "https://agargame.io/sitemap.xml"
+    active: true
+  - name: "GolfhitOrg"
+    sitemap_urls:
+      - "https://golfhit.org/sitemap.xml"
+    active: true
+  - name: "Jacksmithgame"
+    sitemap_urls:
+      - "https://jacksmithgame.io/sitemap.xml"
+    active: true
+  - name: "Idolsofash"
+    sitemap_urls:
+      - "https://idolsofash.org/sitemap.xml"
+    active: true
+  - name: "Spunky"
+    sitemap_urls:
+      - "https://spunky.games/sitemap.xml"
+    # /{slug} 与 /{locale}/{slug} 并存，取最后一段对齐
+    slug_last_segment: true
+    active: true
+  - name: "Schoolboyrunaway"
+    sitemap_urls:
+      - "https://schoolboyrunaway.io/sitemap.xml"
+    active: true
+  - name: "Geometrygame2"
+    sitemap_urls:
+      - "https://geometrygame2.io/sitemap.xml"
+    active: true
+  - name: "Stuntbikeextreme"
+    sitemap_urls:
+      - "https://stuntbikeextreme.io/sitemap.xml"
+    active: true
+  - name: "Drivequest"
+    sitemap_urls:
+      - "https://drivequest.site/sitemap.xml"
+    active: true
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
   secret: "YOUR_SECRET"
