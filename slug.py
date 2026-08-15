@@ -13,6 +13,8 @@ NOISE_EXACT = frozenset({
     'all-tags',
     'trending-games',
     'popular-games',
+    'top-rated-games',
+    'recently-played',
     'top-popular',
     'online',
     'pratice',
@@ -35,6 +37,15 @@ NOISE_EXACT = frozenset({
 })
 NOISE_PREFIXES = ('tag/', 'category/', 'tags/', 'blog/', 'page/')
 NOISE_SUFFIXES = ('.games',)
+# path 中出现这些段则整页不当作游戏（Friv 镜像的 /tag/xxx）
+TAXONOMY_SEGMENTS = frozenset({
+    'tag',
+    'tags',
+    'category',
+    'categories',
+    'page',
+    'pages',
+})
 # 站点连载页，如 phrazle-1631
 SERIAL_SLUG_RE = re.compile(r'^(phrazle)-\d+$')
 # Playhop 等站把内部 ID 挂在 slug 后，如 foosball-96247
@@ -71,10 +82,12 @@ def extract_slug(
     if not path:
         return None
     path = path.lower()
+    segments = path.split('/')
+    if any(seg in TAXONOMY_SEGMENTS for seg in segments):
+        return None
 
     if game_path_marker:
         marker = game_path_marker.strip('/').lower()
-        segments = path.split('/')
         if marker not in segments:
             return None
         if slug_after_marker:
@@ -92,6 +105,8 @@ def extract_slug(
     if strip_id_suffix and slug:
         stripped = ID_SUFFIX_RE.sub('', slug)
         slug = stripped or slug
+    if slug and slug.endswith('.html'):
+        slug = slug[:-5] or slug
     if slug:
         slug = slug.replace('_', '-')
     return slug

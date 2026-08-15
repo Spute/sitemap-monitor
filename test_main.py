@@ -107,6 +107,16 @@ def test_extract_slug_normalizes_underscores():
     )
 
 
+def test_extract_slug_strips_html_suffix():
+    assert (
+        extract_slug(
+            "https://www.brightygames.com/games/sniper-for-brainrot.html",
+            game_path_marker="/games/",
+        )
+        == "sniper-for-brainrot"
+    )
+
+
 def test_extract_slug_last_segment():
     assert (
         extract_slug(
@@ -117,6 +127,13 @@ def test_extract_slug_last_segment():
     )
     assert extract_slug("https://www.playagame.io/arcade/cut-the-rope/") == (
         "arcade/cut-the-rope"
+    )
+    assert (
+        extract_slug(
+            "https://www.friv-2018.com/tag/reflex-games",
+            slug_last_segment=True,
+        )
+        is None
     )
 
 
@@ -142,13 +159,15 @@ def test_extract_slug_after_marker():
             "https://www.friv.com/z/games/2048numbermatch/game.html",
             game_path_marker="/games/",
         )
-        == "game.html"
+        == "game"
     )
 
 
 def test_is_game_slug_filters_noise():
     assert is_game_slug("hill-sprint")
     assert not is_game_slug("new-games")
+    assert not is_game_slug("recently-played")
+    assert not is_game_slug("top-rated-games")
     assert not is_game_slug("about-us")
     assert not is_game_slug("tag/indie")
     assert not is_game_slug("action.games")

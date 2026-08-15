@@ -434,6 +434,7 @@ sites:
   - name: "Simple"
     sitemap_urls:
       - "https://simple.game/sitemap.xml"
+    game_path_marker: "/play/"
     active: true
   - name: "Twoplayergames"
     sitemap_urls:
@@ -645,6 +646,317 @@ sites:
     include_sitemap_patterns:
       - "wp-sitemap-posts-post-"
     slug_last_segment: true
+    active: true
+  - name: "PokerogueOrg"
+    sitemap_urls:
+      - "https://pokerogue.org/sitemap.xml"
+    active: true
+  - name: "Slitheriogame"
+    sitemap_urls:
+      - "https://slitheriogame.io/sitemap.xml"
+    active: true
+  - name: "Martgames"
+    sitemap_urls:
+      - "https://martgames.io/sitemap.xml"
+    active: true
+  - name: "BrainrotGames"
+    sitemap_urls:
+      - "https://brainrot-games.io/sitemap.xml"
+    active: true
+  - name: "Clickergamesaz"
+    sitemap_urls:
+      - "https://clickergamesaz.io/sitemap.xml"
+    active: true
+  - name: "Skribbliogame"
+    sitemap_urls:
+      - "https://skribbliogame.io/sitemap.xml"
+    active: true
+  - name: "BrainLines"
+    sitemap_urls:
+      - "https://brain-lines.io/sitemap.xml"
+    active: true
+  - name: "Fivenightsatfreddys3"
+    sitemap_urls:
+      - "https://fivenightsatfreddys3.com/sitemap.xml"
+    active: true
+  - name: "Fnaf1"
+    sitemap_urls:
+      - "https://fnaf1.io/sitemap.xml"
+    active: true
+  - name: "Spacewaves2io"
+    sitemap_urls:
+      - "https://spacewaves-2.io/sitemap.xml"
+    active: true
+  - name: "Citybrawl"
+    sitemap_urls:
+      - "https://citybrawl.com/sitemap.xml"
+    active: true
+  - name: "Undeadcorridor"
+    sitemap_urls:
+      - "https://undeadcorridor.io/sitemap.xml"
+    active: true
+  - name: "Granny1"
+    sitemap_urls:
+      - "https://granny1.io/sitemap.xml"
+    active: true
+  - name: "Friv2018"
+    sitemap_urls:
+      - "https://www.friv-2018.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "FrivUno"
+    sitemap_urls:
+      - "https://www.friv.uno/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Friv2020"
+    sitemap_urls:
+      - "https://www.friv-2020.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Friv2021"
+    sitemap_urls:
+      - "https://www.friv2021.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Friv2023"
+    sitemap_urls:
+      - "https://www.friv2023.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Frivoriginal"
+    sitemap_urls:
+      - "https://www.frivoriginal.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Game24h"
+    sitemap_urls:
+      - "https://www.game24h.io/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Gamevui"
+    sitemap_urls:
+      - "https://www.gamevui.io/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Gamevui2"
+    sitemap_urls:
+      - "https://www.gamevui2.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Pikachucodien"
+    sitemap_urls:
+      - "https://www.pikachucodien.net/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Pikachuonline"
+    sitemap_urls:
+      - "https://www.pikachuonline.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Poki2"
+    sitemap_urls:
+      - "https://www.poki2.net/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "IgraNet"
+    sitemap_urls:
+      - "https://xn--80afo7a.net/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Y81nguoi"
+    sitemap_urls:
+      - "https://www.y81nguoi.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Y82nguoi"
+    sitemap_urls:
+      - "https://www.y82nguoi.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Choiransanmoi"
+    sitemap_urls:
+      - "https://www.choiransanmoi.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "FlashArena"
+    sitemap_urls:
+      - "https://flash-arena.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Juegosfriv2023"
+    sitemap_urls:
+      - "https://www.juegosfriv2023.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Yoob2"
+    sitemap_urls:
+      - "https://www.yoob2.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "GrannyOnline"
+    sitemap_urls:
+      - "https://www.granny-online.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Puzzlegame"
+    sitemap_urls:
+      - "https://www.puzzlegame.com/sitemap.xml"
+    active: true
+  - name: "Cargames"
+    sitemap_urls:
+      - "https://www.cargames.com/sitemap.xml"
+    active: true
+  - name: "Yad"
+    sitemap_urls:
+      - "https://www.yad.com/sitemap.xml"
+    active: true
+  - name: "Bestgames"
+    sitemap_urls:
+      - "https://www.bestgames.com/sitemap.xml"
+    active: true
+  - name: "Yiv"
+    sitemap_urls:
+      - "https://www.yiv.com/sitemap.xml"
+    active: true
+  - name: "Escapetsunamibrainrots"
+    sitemap_urls:
+      - "https://escapetsunamibrainrots.org/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Openseaforbrainrots"
+    sitemap_urls:
+      - "https://openseaforbrainrots.com/sitemap.xml"
+    active: true
+  - name: "Onlineescaperoom"
+    sitemap_urls:
+      - "https://onlineescaperoom.org/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "PlayitOnline"
+    sitemap_urls:
+      - "https://www.playit-online.de/sitemap.xml"
+    game_path_marker: "/spiel/"
+    active: true
+  - name: "Sloperun2"
+    sitemap_urls:
+      - "https://sloperun2.io/sitemap.xml"
+    active: true
+  - name: "Blockslide"
+    sitemap_urls:
+      - "https://blockslide.io/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Rhythmgames"
+    sitemap_urls:
+      - "https://rhythmgames.io/sitemap.xml"
+    active: true
+  - name: "Wheelielife"
+    sitemap_urls:
+      - "https://wheelielife.io/sitemap.xml"
+    active: true
+  - name: "Lovetestergame"
+    sitemap_urls:
+      - "https://lovetestergame.io/sitemap.xml"
+    active: true
+  - name: "SloperiderIo"
+    sitemap_urls:
+      - "https://slope-rider.io/sitemap.xml"
+    active: true
+  - name: "Trollgames"
+    sitemap_urls:
+      - "https://trollgames.io/sitemap.xml"
+    active: true
+  - name: "Brightygames"
+    sitemap_urls:
+      - "https://www.brightygames.com/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Kiz10"
+    sitemap_urls:
+      - "https://kiz10.com/sitemap-new.xml"
+    active: true
+  - name: "Najox"
+    sitemap_urls:
+      - "https://www.najox.com/sitemap_games.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Blockblast2"
+    sitemap_urls:
+      - "https://blockblast-2.io/sitemap.xml"
+    active: true
+  - name: "Bubblebox"
+    sitemap_urls:
+      - "https://bubblebox.com/sitemap.xml"
+    active: true
+  - name: "Basketballstars3"
+    sitemap_urls:
+      - "https://basketballstars3.io/sitemap.xml"
+    active: true
+  - name: "Gameslol"
+    sitemap_urls:
+      - "https://en.gameslol.net/sitemap.xml"
+    strip_id_suffix: true
+    active: true
+  - name: "Phatgames"
+    sitemap_urls:
+      - "https://phatgames.fun/sitemap.xml"
+    game_path_marker: "/play/"
+    active: true
+  - name: "Playingfungames"
+    sitemap_urls:
+      - "https://www.playingfungames.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Friv2025"
+    sitemap_urls:
+      - "https://www.friv2025.com/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "Juegosfriv2018"
+    sitemap_urls:
+      - "https://www.juegosfriv2018.net/sitemap.xml"
+    slug_last_segment: true
+    active: true
+  - name: "GamesDo"
+    sitemap_urls:
+      - "https://www.games.do/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "My1001games"
+    sitemap_urls:
+      - "https://www.my1001games.com/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Slope3d"
+    sitemap_urls:
+      - "https://slope-3d.io/sitemap.xml"
+    active: true
+  - name: "Melonplayground"
+    sitemap_urls:
+      - "https://melonplayground.io/sitemap.xml"
+    active: true
+  - name: "Geometrydashx"
+    sitemap_urls:
+      - "https://geometrydashx.io/sitemap.xml"
+    active: true
+  - name: "Miniplay"
+    sitemap_urls:
+      - "https://miniplay.io/sitemap.xml"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Hyhygames"
+    sitemap_urls:
+      - "https://hyhygames.com/sitemap.xml"
+    game_path_marker: "/game/"
+    active: true
+  - name: "Slopegame2"
+    sitemap_urls:
+      - "https://slopegame-2.io/sitemap.xml"
+    active: true
+  - name: "Bloodmoney2"
+    sitemap_urls:
+      - "https://bloodmoney2.app/sitemap.xml"
     active: true
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
