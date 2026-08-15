@@ -119,6 +119,9 @@ heat:
 - `active: false` 可暂时跳过某个站点
 - `include_sitemap_patterns` 可选；过滤 sitemapindex 中要继续抓取的子 sitemap
 - `game_path_marker` 可选；用于 CrazyGames 这类路径较深的站点
+- `strip_id_suffix` 可选；去掉 slug 末尾 `-数字`（如 Playhop 的 `/app/foosball-96247`）
+- `slug_after_marker` 可选；slug 取 `game_path_marker` 后一段（如 Friv 的 `/z/games/{slug}/game.html`）
+- `slug_last_segment` 可选；无 marker 时也取 path 最后一段（如 PlayA 的 `/{category}/{slug}/`）
 
 ## 运行监控
 

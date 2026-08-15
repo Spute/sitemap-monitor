@@ -79,7 +79,7 @@ sites:
       - "https://www.crazygames.com/en/"
     # 仅游戏页；slug 取 path 最后一段
     game_path_marker: "/game/"
-    active: false # sitemap 误配为 localhost:3000，暂时不可用
+    active: true
 
   - name: "Wordlenyt"
     sitemap_urls:
@@ -586,6 +586,65 @@ sites:
   - name: "WebGames"
     sitemap_urls:
       - "https://web-games.io/sitemap.xml"
+    active: true
+  - name: "Playhop"
+    # 根路径 sitemap.xml 只有博客/静态页；游戏在 apps index
+    sitemap_urls:
+      - "https://playhop.com/sitemaps/sitemap.apps.index.xml"
+    game_path_marker: "/app/"
+    strip_id_suffix: true
+    active: true
+  - name: "Friv"
+    sitemap_urls:
+      - "https://www.friv.com/sitemap.xml"
+    # /z/games/{slug}/game.html
+    game_path_marker: "/games/"
+    slug_after_marker: true
+    active: true
+  - name: "Y8"
+    # 中文站；游戏在 /games/{slug}，slug 多为下划线
+    sitemap_urls:
+      - "https://zh.y8.com/sitemaps/y8/zh/sitemap.xml.gz"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Poki"
+    sitemap_urls:
+      - "https://poki.com/en/sitemaps/index.xml"
+    include_sitemap_patterns:
+      - "/games.xml"
+    game_path_marker: "/g/"
+    active: true
+  - name: "Kizi"
+    sitemap_urls:
+      - "https://kizi.com/sitemap.xml"
+    include_sitemap_patterns:
+      - "sitemap_games"
+    game_path_marker: "/games/"
+    active: true
+  - name: "Agame"
+    sitemap_urls:
+      - "https://www.agame.com/sitemap.xml"
+    include_sitemap_patterns:
+      - "sitemap_games"
+    game_path_marker: "/game/"
+    active: true
+  - name: "SilverGames"
+    sitemap_urls:
+      - "https://www.silvergames.com/sitemap.xml"
+    active: false # 站点无 XML sitemap，robots.txt 也未声明
+  - name: "GamesGames"
+    sitemap_urls:
+      - "https://www.gamesgames.com/sitemap.xml"
+    include_sitemap_patterns:
+      - "sitemap_games"
+    game_path_marker: "/game/"
+    active: true
+  - name: "PlayA"
+    sitemap_urls:
+      - "https://www.playagame.io/wp-sitemap.xml"
+    include_sitemap_patterns:
+      - "wp-sitemap-posts-post-"
+    slug_last_segment: true
     active: true
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"

@@ -64,6 +64,88 @@ def test_extract_slug_with_marker():
     )
 
 
+def test_extract_slug_strips_id_suffix():
+    assert (
+        extract_slug(
+            "https://playhop.com/app/foosball-96247",
+            game_path_marker="/app/",
+            strip_id_suffix=True,
+        )
+        == "foosball"
+    )
+    assert (
+        extract_slug(
+            "https://playhop.com/app/get-10-96433",
+            game_path_marker="/app/",
+            strip_id_suffix=True,
+        )
+        == "get-10"
+    )
+    assert (
+        extract_slug(
+            "https://playhop.com/app/foosball-96247",
+            game_path_marker="/app/",
+        )
+        == "foosball-96247"
+    )
+
+
+def test_extract_slug_normalizes_underscores():
+    assert (
+        extract_slug(
+            "https://zh.y8.com/games/crazy_goat_simulator",
+            game_path_marker="/games/",
+        )
+        == "crazy-goat-simulator"
+    )
+    assert (
+        extract_slug(
+            "https://zh.y8.com/tags/action",
+            game_path_marker="/games/",
+        )
+        is None
+    )
+
+
+def test_extract_slug_last_segment():
+    assert (
+        extract_slug(
+            "https://www.playagame.io/arcade/cut-the-rope/",
+            slug_last_segment=True,
+        )
+        == "cut-the-rope"
+    )
+    assert extract_slug("https://www.playagame.io/arcade/cut-the-rope/") == (
+        "arcade/cut-the-rope"
+    )
+
+
+def test_extract_slug_after_marker():
+    assert (
+        extract_slug(
+            "https://www.friv.com/z/games/2048numbermatch/game.html",
+            game_path_marker="/games/",
+            slug_after_marker=True,
+        )
+        == "2048numbermatch"
+    )
+    assert (
+        extract_slug(
+            "https://www.friv.com/z/play/games.html",
+            game_path_marker="/games/",
+            slug_after_marker=True,
+        )
+        is None
+    )
+    assert (
+        extract_slug(
+            "https://www.friv.com/z/games/2048numbermatch/game.html",
+            game_path_marker="/games/",
+        )
+        == "game.html"
+    )
+
+
 def test_is_game_slug_filters_noise():
     assert is_game_slug("hill-sprint")
     assert not is_game_slug("new-games")
@@ -315,10 +397,10 @@ def test_process_sitemap_live():
 
 
 def test_process_sitemap_live_crazygames():
-    """CrazyGames 当前 sitemap-index 误指向 localhost:3000，应安全返回空列表。"""
+    """CrazyGames 英文子 sitemap 应能展开出游戏页。"""
     urls = process_sitemap(
         "https://www.crazygames.com/sitemap-index.xml",
         include_sitemap_patterns=["https://www.crazygames.com/en/"],
     )
     assert isinstance(urls, list)
-    assert urls == []
+    assert any("/game/" in url for url in urls)

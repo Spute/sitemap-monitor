@@ -19,6 +19,9 @@ def process_site(site, store, today, burst_window_days):
     """
     site_name = site['name']
     marker = site.get('game_path_marker')
+    strip_id_suffix = site.get('strip_id_suffix', False)
+    slug_after_marker = site.get('slug_after_marker', False)
+    slug_last_segment = site.get('slug_last_segment', False)
     logging.info(f"处理站点: {site_name}")
 
     all_urls = []
@@ -34,7 +37,13 @@ def process_site(site, store, today, burst_window_days):
         logging.warning(f"{site_name}: 抓取 sitemap 未得到任何 URL，请检查站点配置或可达性")
         return []
 
-    entries = to_game_entries(all_urls, game_path_marker=marker)
+    entries = to_game_entries(
+        all_urls,
+        game_path_marker=marker,
+        strip_id_suffix=strip_id_suffix,
+        slug_after_marker=slug_after_marker,
+        slug_last_segment=slug_last_segment,
+    )
     if not entries:
         logging.warning(
             f"{site_name}: 抓到 {len(all_urls)} 个 URL，但过滤后无游戏词，请检查噪音规则或 game_path_marker"
