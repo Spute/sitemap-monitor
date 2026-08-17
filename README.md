@@ -23,7 +23,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 
 噪音过滤包括：导航页（`new-games` / `hot-games` 等）、静态页（`about-us` 等）、`tag/` / `category/` 前缀、`*.games` 后缀，以及站点连载页等。
 
-### 存储：SQLite（slug 中心）
+### 存储：Turso（libSQL / SQLite）
 
 | 表 | 作用 |
 |---|---|
@@ -54,7 +54,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 
 - 拉取 XML / TEXT sitemap（自动识别 gzip，递归展开 sitemapindex）
 - 网络超时 / 连接重置时自动重试 1 次；抓取无 URL 时打 warning
-- 提取并过滤游戏 slug，写入 SQLite
+- 提取并过滤游戏 slug，写入 Turso
 - 按站检测新增游戏词，记录每日 events
 - 跨站爆发热度评估；达阈值时飞书通知（卡片附中文译名）
 - 按配置清理过期 events
@@ -68,7 +68,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 
 ### 查询侧（`api.py` / FastAPI）
 
-- 提供 REST 查询接口，数据来自 `data/games.db`
+- 提供 REST 查询接口，数据来自 Turso
 - 内置 OpenAPI 文档（Swagger / ReDoc），响应字段均有中文说明
 - 覆盖：爆发列表、热榜搜索、一词详情、事件流、按站查看
 
@@ -82,6 +82,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 会默认安装开发依赖：
 ```bash
 uv sync
+cp .env.example .env   # 填入 TURSO_DATABASE_URL / TURSO_AUTH_TOKEN
 ```
 
 仅安装运行依赖（不含开发依赖）：
@@ -120,9 +121,6 @@ translation:
     - google      # Google 网页翻译（无需 key）
     - mymemory    # MyMemory 官方免费 API（无需 key）
 
-storage:
-  db_path: "./data/games.db"
-
 heat:
   burst_window_days: 7       # 爆发统计窗口
   alert_site_threshold: 2    # 窗口内站点数 ≥ 此值则告警
@@ -138,6 +136,13 @@ heat:
 - `translation.enabled` 控制飞书卡片是否给游戏词附中文译名（每次通知时实时翻译，不缓存）。设 `enabled: false` 可关闭
 - `translation.providers` 按顺序尝试；默认 `google` → `mymemory`，均可无 key。机翻对游戏名不稳定，译不出则省略中文
 
+数据库连接不写进 `config.yaml`，用环境变量（本地可复制 `.env.example` 为 `.env`）：
+
+```bash
+TURSO_DATABASE_URL=libsql://sitemap-games-xxxx.aws-ap-northeast-1.turso.io
+TURSO_AUTH_TOKEN=...
+```
+
 ## 运行监控
 
 ```bash
@@ -146,7 +151,7 @@ uv run python main.py
 
 ## 手动推送飞书（基于当前数据库）
 
-不重新抓取 sitemap，直接读取 `data/games.db` 中的爆发结果并发飞书。候选范围始终是 **近窗爆发词**（默认 7 天、跨站数 ≥ 阈值），再用日期参数收窄「这一天有新增站点」的子集。不加日期参数 = 近窗全部，不是历史所有天。
+不重新抓取 sitemap，直接读取 Turso 中的爆发结果并发飞书。候选范围始终是 **近窗爆发词**（默认 7 天、跨站数 ≥ 阈值），再用日期参数收窄「这一天有新增站点」的子集。不加日期参数 = 近窗全部，不是历史所有天。
 
 `--today` / `--yesterday` / `--on` 三选一；`--dry-run` 只打印卡片、不发送，可与日期参数组合。
 
@@ -296,13 +301,13 @@ uv run pytest
 ├── schemas.py              # API 响应模型（OpenAPI）
 ├── slug.py                 # URL → 游戏词提取与噪音过滤
 ├── sitemap.py              # sitemap 拉取与解析
-├── store.py                # SQLite（sightings / events / games）
+├── store.py                # Turso / SQLite（sightings / events / games）
 ├── notify.py               # 飞书跨站爆发通知
 ├── translate.py            # 游戏词免费英译中（飞书卡片用）
 ├── config_loader.py        # 配置加载
 ├── config.yaml             # 站点 / 热度 / 通知配置
+├── .env.example            # Turso 环境变量模板
 ├── test_main.py / test_api.py
-├── data/games.db           # SQLite（唯一数据存储）
 └── .github/workflows/      # GitHub Actions 定时监控
 ```
 
@@ -311,8 +316,8 @@ uv run pytest
 工作流：`.github/workflows/sitemap-check.yml`
 
 - 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
-- 流程：`uv sync --frozen` → 运行监控 → 有变更则提交并推送
-- 需在仓库 Secrets 中配置 `GH_TOKEN`（用于回写数据）
+- 流程：`uv sync --frozen` → 运行监控，结果写入 Turso
+- 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
 
 ## 常用命令
 

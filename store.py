@@ -1,8 +1,89 @@
-"""SQLite 存储：以 slug 为中心，支撑跨站查询与爆发热度。"""
+"""存储：以 slug 为中心，支撑跨站查询与爆发热度。
 
+生产环境连接 Turso（环境变量 TURSO_DATABASE_URL / TURSO_AUTH_TOKEN）；
+测试与离线调试可传入本地 SQLite 路径。
+"""
+
+import os
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+_ROOT = Path(__file__).resolve().parent
+_WRITE_CHUNK = 400
+_REFRESH_CHUNK = 200
+
+load_dotenv(_ROOT / '.env')
+
+
+class _NamedRow(dict):
+    """让 libsql 的 tuple 行也能用 row['col'] / dict(row)。"""
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+
+class _LibsqlCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def _wrap(self, row):
+        if row is None:
+            return None
+        desc = self._cursor.description
+        if not desc:
+            return row
+        return _NamedRow((col[0], value) for col, value in zip(desc, row))
+
+    def fetchone(self):
+        return self._wrap(self._cursor.fetchone())
+
+    def fetchall(self):
+        return [self._wrap(row) for row in self._cursor.fetchall()]
+
+
+class _LibsqlConn:
+    """补齐 libsql 与 sqlite3 的行访问差异。"""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=()):
+        return _LibsqlCursor(self._conn.execute(sql, params))
+
+    def executemany(self, sql, seq_of_params):
+        return self._conn.executemany(sql, seq_of_params)
+
+    def executescript(self, script):
+        return self._conn.executescript(script)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+
+def open_store(*, db_path=None, check_same_thread=True):
+    """打开存储。显式 db_path 走本地 SQLite；否则读 Turso 环境变量。"""
+    if db_path is not None:
+        return GameStore(db_path, check_same_thread=check_same_thread)
+    url = os.environ.get('TURSO_DATABASE_URL', '').strip()
+    token = os.environ.get('TURSO_AUTH_TOKEN', '').strip()
+    if url and token:
+        return GameStore(
+            url=url,
+            auth_token=token,
+            check_same_thread=check_same_thread,
+        )
+    raise RuntimeError(
+        '未配置数据库。请设置环境变量 TURSO_DATABASE_URL 和 TURSO_AUTH_TOKEN '
+        '（可写入项目根目录 .env）'
+    )
 
 
 class GameStore:
@@ -12,14 +93,41 @@ class GameStore:
     - games: 汇总 site_count / heat_score
     """
 
-    def __init__(self, db_path, *, check_same_thread=True):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(
-            self.db_path,
-            check_same_thread=check_same_thread,
-        )
-        self.conn.row_factory = sqlite3.Row
+    def __init__(
+        self,
+        db_path=None,
+        *,
+        url=None,
+        auth_token=None,
+        check_same_thread=True,
+    ):
+        if url:
+            if not auth_token:
+                raise ValueError('Turso 连接需要 auth_token')
+            import libsql
+
+            raw = libsql.connect(
+                database=url,
+                auth_token=auth_token,
+                _check_same_thread=check_same_thread,
+            )
+            self.conn = _LibsqlConn(raw)
+            self.location = url
+            self.backend = 'turso'
+            self.db_path = None
+        elif db_path is not None:
+            path = Path(db_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.conn = sqlite3.connect(
+                path,
+                check_same_thread=check_same_thread,
+            )
+            self.conn.row_factory = sqlite3.Row
+            self.location = str(path.resolve())
+            self.backend = 'sqlite'
+            self.db_path = path
+        else:
+            raise ValueError('需要本地 db_path 或 Turso url / auth_token')
         self._init_schema()
 
     def _init_schema(self):
@@ -47,6 +155,10 @@ class GameStore:
                 site_count INTEGER NOT NULL DEFAULT 0,
                 heat_score REAL NOT NULL DEFAULT 0
             );
+            CREATE TABLE IF NOT EXISTS site_sync (
+                site TEXT PRIMARY KEY,
+                last_sync TEXT NOT NULL
+            );
             CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
             CREATE INDEX IF NOT EXISTS idx_events_slug ON events(slug);
             CREATE INDEX IF NOT EXISTS idx_sightings_site ON sightings(site);
@@ -58,6 +170,12 @@ class GameStore:
     def close(self):
         self.conn.close()
 
+    def _executemany_chunked(self, sql, rows, chunk_size=_WRITE_CHUNK):
+        if not rows:
+            return
+        for i in range(0, len(rows), chunk_size):
+            self.conn.executemany(sql, rows[i : i + chunk_size])
+
     def site_has_sightings(self, site):
         """该站是否已有基线数据。"""
         row = self.conn.execute(
@@ -66,17 +184,23 @@ class GameStore:
         ).fetchone()
         return row is not None
 
+    def _slugs_for_site(self, site):
+        rows = self.conn.execute(
+            'SELECT slug FROM sightings WHERE site = ?',
+            (site,),
+        ).fetchall()
+        return {row['slug'] for row in rows}
+
     def upsert_sighting(self, slug, site, url, today):
-        """写入/更新收录关系。返回 True 表示该站首次见到此 slug。"""
+        """写入/更新收录关系。返回 True 表示该站首次见到此 slug。
+
+        已存在的行不改 last_seen，避免每天全表更新（托管库额度）。
+        """
         row = self.conn.execute(
             'SELECT first_seen FROM sightings WHERE slug = ? AND site = ?',
             (slug, site),
         ).fetchone()
         if row:
-            self.conn.execute(
-                'UPDATE sightings SET url = ?, last_seen = ? WHERE slug = ? AND site = ?',
-                (url, today, slug, site),
-            )
             return False
         self.conn.execute(
             'INSERT INTO sightings (slug, site, url, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)',
@@ -98,64 +222,117 @@ class GameStore:
         return (datetime.now() - timedelta(days=days - 1)).strftime('%Y-%m-%d')
 
     def refresh_game(self, slug, burst_window_days):
-        """按 sightings + 近窗 events 重算 games 汇总行。
+        """按 sightings + 近窗 events 重算单个 games 汇总行。"""
+        self._refresh_games([slug], burst_window_days)
 
-        heat_score = site_count + 2 * 近窗爆发站点数
-        （存量覆盖 + 加权近期扩散）
-        """
-        stats = self.conn.execute(
-            """
-            SELECT MIN(first_seen) AS first_seen,
-                   MAX(last_seen) AS last_seen,
-                   COUNT(*) AS site_count
-            FROM sightings
-            WHERE slug = ?
-            """,
-            (slug,),
-        ).fetchone()
-        if not stats or not stats['site_count']:
+    def _refresh_games(self, slugs, burst_window_days):
+        """批量重算 games 汇总行。"""
+        unique = list(dict.fromkeys(slug for slug in slugs if slug))
+        if not unique:
             return
-
         cutoff = self.window_cutoff(burst_window_days)
-        burst = self.conn.execute(
-            """
-            SELECT COUNT(DISTINCT site) AS n
-            FROM events
-            WHERE slug = ? AND date >= ?
-            """,
-            (slug, cutoff),
-        ).fetchone()['n']
-
-        heat = float(stats['site_count']) + 2.0 * float(burst)
-        self.conn.execute(
-            """
-            INSERT INTO games (slug, first_seen, last_seen, site_count, heat_score)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(slug) DO UPDATE SET
-                first_seen = excluded.first_seen,
-                last_seen = excluded.last_seen,
-                site_count = excluded.site_count,
-                heat_score = excluded.heat_score
-            """,
-            (slug, stats['first_seen'], stats['last_seen'], stats['site_count'], heat),
-        )
+        for i in range(0, len(unique), _REFRESH_CHUNK):
+            chunk = unique[i : i + _REFRESH_CHUNK]
+            placeholders = ','.join('?' for _ in chunk)
+            stats_rows = self.conn.execute(
+                f"""
+                SELECT slug,
+                       MIN(first_seen) AS first_seen,
+                       MAX(last_seen) AS last_seen,
+                       COUNT(*) AS site_count
+                FROM sightings
+                WHERE slug IN ({placeholders})
+                GROUP BY slug
+                """,
+                chunk,
+            ).fetchall()
+            burst_rows = self.conn.execute(
+                f"""
+                SELECT slug, COUNT(DISTINCT site) AS n
+                FROM events
+                WHERE slug IN ({placeholders}) AND date >= ?
+                GROUP BY slug
+                """,
+                (*chunk, cutoff),
+            ).fetchall()
+            burst_map = {row['slug']: row['n'] for row in burst_rows}
+            payload = []
+            for stats in stats_rows:
+                if not stats['site_count']:
+                    continue
+                heat = float(stats['site_count']) + 2.0 * float(
+                    burst_map.get(stats['slug'], 0)
+                )
+                payload.append(
+                    (
+                        stats['slug'],
+                        stats['first_seen'],
+                        stats['last_seen'],
+                        stats['site_count'],
+                        heat,
+                    )
+                )
+            self._executemany_chunked(
+                """
+                INSERT INTO games (slug, first_seen, last_seen, site_count, heat_score)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(slug) DO UPDATE SET
+                    first_seen = excluded.first_seen,
+                    last_seen = excluded.last_seen,
+                    site_count = excluded.site_count,
+                    heat_score = excluded.heat_score
+                """,
+                payload,
+            )
 
     def sync_site(self, site, entries, today, burst_window_days):
         """用当前 sitemap 游戏目录同步某站。
 
         - 该站尚无 sightings：建立基线，只写存量、不写 events（避免首跑全量告警）
         - 已有基线：首次见到的 slug 记入 events，并返回这些 slug
+        - 已存在的收录不再每天改 last_seen
         """
-        baseline = not self.site_has_sightings(site)
-        newly_seen = []
+        existing = self._slugs_for_site(site)
+        baseline = not existing
+        new_rows = []
+        seen_new = set()
         for slug, url in entries:
-            is_new = self.upsert_sighting(slug, site, url, today)
-            if is_new and not baseline:
-                self.record_event(today, slug, site, url)
-                newly_seen.append(slug)
-            self.refresh_game(slug, burst_window_days)
+            if slug in existing or slug in seen_new:
+                continue
+            seen_new.add(slug)
+            new_rows.append((slug, site, url, today, today))
+
+        if new_rows:
+            self._executemany_chunked(
+                """
+                INSERT OR IGNORE INTO sightings
+                    (slug, site, url, first_seen, last_seen)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                new_rows,
+            )
+            if not baseline:
+                self._executemany_chunked(
+                    """
+                    INSERT OR IGNORE INTO events (date, slug, site, url)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    [
+                        (today, slug, site, url)
+                        for slug, site, url, _, _ in new_rows
+                    ],
+                )
+            self._refresh_games([row[0] for row in new_rows], burst_window_days)
+
+        self.conn.execute(
+            """
+            INSERT INTO site_sync (site, last_sync) VALUES (?, ?)
+            ON CONFLICT(site) DO UPDATE SET last_sync = excluded.last_sync
+            """,
+            (site, today),
+        )
         self.conn.commit()
-        return newly_seen
+        return [] if baseline else [row[0] for row in new_rows]
 
     def burst_games(self, window_days, threshold):
         """近 window_days 个自然日（含今天）内，新增站点数 ≥ threshold 的游戏词。
@@ -347,13 +524,14 @@ class GameStore:
         """各站收录游戏数与最近更新日。"""
         rows = self.conn.execute(
             """
-            SELECT site,
+            SELECT s.site,
                    COUNT(*) AS game_count,
-                   MIN(first_seen) AS first_seen,
-                   MAX(last_seen) AS last_seen
-            FROM sightings
-            GROUP BY site
-            ORDER BY game_count DESC, site
+                   MIN(s.first_seen) AS first_seen,
+                   COALESCE(MAX(ss.last_sync), MAX(s.last_seen)) AS last_seen
+            FROM sightings s
+            LEFT JOIN site_sync ss ON ss.site = s.site
+            GROUP BY s.site
+            ORDER BY game_count DESC, s.site
             """
         ).fetchall()
         return [dict(r) for r in rows]

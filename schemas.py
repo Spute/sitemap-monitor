@@ -10,7 +10,7 @@ class HealthOut(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "examples": [{"status": "ok", "db_path": "/app/data/games.db"}]
+            "examples": [{"status": "ok", "db_path": "libsql://sitemap-games-org.turso.io"}]
         }
     )
 
@@ -19,8 +19,8 @@ class HealthOut(BaseModel):
         examples=["ok"],
     )
     db_path: str = Field(
-        description="当前连接的 SQLite 数据库绝对路径",
-        examples=["/home/user/sitemap-monitor/data/games.db"],
+        description="当前数据库位置：Turso URL，或测试用的本地 SQLite 路径",
+        examples=["libsql://sitemap-games-org.turso.io"],
     )
 
 

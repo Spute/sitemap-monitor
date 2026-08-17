@@ -36,7 +36,9 @@ def test_api_burst_and_game_detail(tmp_path, monkeypatch):
     _seed(store)
     store.close()
 
-    monkeypatch.setattr(api, "_db_path", lambda: str(db_path))
+    monkeypatch.setattr(
+        api, "_open_store", lambda: GameStore(db_path, check_same_thread=False)
+    )
     monkeypatch.setattr(
         api,
         "_heat_defaults",

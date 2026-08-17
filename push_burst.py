@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from config_loader import load_config
 from notify import build_burst_card, send_feishu_notification
-from store import GameStore
+from store import open_store
 from translate import attach_zh_names
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -63,8 +63,6 @@ def main(config_path="config.yaml"):
     heat = config.get("heat", {})
     window = heat.get("burst_window_days", 7)
     threshold = heat.get("alert_site_threshold", 2)
-    db_path = config.get("storage", {}).get("db_path", "./data/games.db")
-
     if args.yesterday:
         on_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     elif args.on:
@@ -74,7 +72,8 @@ def main(config_path="config.yaml"):
     else:
         on_date = None
 
-    store = GameStore(db_path)
+    store = open_store()
+    logging.info(f"数据库: {store.backend} {store.location}")
     try:
         burst = store.burst_games(window, threshold)
         if on_date:

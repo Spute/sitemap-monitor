@@ -4,7 +4,7 @@ from build_trend_urls import DEFAULT_ANCHOR, build_trends_url
 from notify import build_burst_card, slug_to_trends_keyword
 from sitemap import matches_patterns, parse_txt, parse_xml, process_sitemap
 from slug import extract_slug, is_game_slug, to_game_entries
-from store import GameStore
+from store import GameStore, open_store
 from translate import (
     attach_zh_names,
     contains_cjk,
@@ -193,6 +193,25 @@ def test_to_game_entries_dedupes_and_filters():
     assert to_game_entries(urls) == [
         ("hill-sprint", "https://1games.io/hill-sprint"),
     ]
+
+
+def test_open_store_requires_turso_env(monkeypatch):
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
+    try:
+        open_store()
+        raise AssertionError("expected RuntimeError")
+    except RuntimeError as exc:
+        assert "TURSO_DATABASE_URL" in str(exc)
+
+
+def test_open_store_local_path(tmp_path):
+    store = open_store(db_path=tmp_path / "games.db")
+    try:
+        assert store.backend == "sqlite"
+        assert store.stats()["games"] == 0
+    finally:
+        store.close()
 
 
 def test_sync_site_baseline_then_detects_new(tmp_path):

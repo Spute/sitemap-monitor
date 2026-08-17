@@ -26,16 +26,15 @@ from schemas import (
     SiteOut,
     StatsOut,
 )
-from store import GameStore
+from store import GameStore, open_store
 
 _CONFIG_PATH = Path(__file__).resolve().parent / 'config.yaml'
 _store: GameStore | None = None
 _heat_defaults: dict = {}
 
 
-def _db_path() -> str:
-    config = load_config(_CONFIG_PATH)
-    return config.get('storage', {}).get('db_path', './data/games.db')
+def _open_store() -> GameStore:
+    return open_store(check_same_thread=False)
 
 
 def get_store() -> GameStore:
@@ -49,7 +48,7 @@ async def lifespan(app: FastAPI):
     global _store, _heat_defaults
     config = load_config(_CONFIG_PATH)
     _heat_defaults = config.get('heat', {})
-    _store = GameStore(_db_path(), check_same_thread=False)
+    _store = _open_store()
     try:
         yield
     finally:
@@ -102,7 +101,7 @@ app = FastAPI(
     summary="健康检查",
 )
 def health():
-    return HealthOut(status="ok", db_path=str(Path(_db_path()).resolve()))
+    return HealthOut(status="ok", db_path=get_store().location)
 
 
 @app.get(

@@ -1027,9 +1027,6 @@ translation:
     - google      # Google 网页翻译（无需 key）
     - mymemory    # MyMemory 官方免费 API（无需 key，约 5000 词/天）
 
-storage:
-  db_path: "./data/games.db"
-
 heat:
   burst_window_days: 7
   alert_site_threshold: 2

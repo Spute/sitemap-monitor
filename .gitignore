@@ -85,3 +85,7 @@ temp/
 
 # Local pytest artifacts
 pytest-cache-files-*/
+
+# Local SQLite leftovers（正式数据在 Turso）
+data/*.db
+data/*.db-*

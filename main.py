@@ -7,7 +7,7 @@ from config_loader import load_config
 from notify import build_burst_card, send_feishu_notification
 from sitemap import process_sitemap
 from slug import to_game_entries
-from store import GameStore
+from store import open_store
 from translate import attach_zh_names
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -60,14 +60,13 @@ def process_site(site, store, today, burst_window_days):
 
 def main(config_path='config.yaml'):
     config = load_config(config_path)
-    storage = config.get('storage', {})
     heat = config.get('heat', {})
     burst_window_days = heat.get('burst_window_days', 7)
     alert_threshold = heat.get('alert_site_threshold', 2)
     events_retention_days = heat.get('events_retention_days', 90)
-    db_path = storage.get('db_path', './data/games.db')
 
-    store = GameStore(db_path)
+    store = open_store()
+    logging.info(f"数据库: {store.backend} {store.location}")
     today = datetime.now().strftime('%Y-%m-%d')
 
     touched_slugs = []

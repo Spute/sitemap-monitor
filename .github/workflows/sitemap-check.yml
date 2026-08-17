@@ -1,4 +1,4 @@
-# Sitemap 监控工作流：定时或手动拉取 sitemap，对比变更后回写仓库
+# Sitemap 监控工作流：定时或手动拉取 sitemap，结果写入 Turso
 name: Sitemap Monitor
 
 on:
@@ -23,11 +23,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    # 拉取仓库代码；不持久化凭据，后续用 GH_TOKEN 推送
     - name: Checkout code
       uses: actions/checkout@v7
-      with:
-        persist-credentials: false
 
     # 安装 uv，并启用依赖缓存
     - name: Setup uv
@@ -40,17 +37,9 @@ jobs:
     - name: Install dependencies
       run: uv sync --frozen --no-dev
 
-    # 执行 sitemap 监控主脚本
+    # 执行 sitemap 监控主脚本（数据写入 Turso，不再回写仓库）
     - name: Run Monitor
-      run: uv run python main.py
-
-    # 若有数据变更则提交并推送回仓库
-    - name: Commit changes
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}  # 需在仓库 Secrets 中配置
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        git add .
-        # 无变更则跳过；有变更则提交并推送
-        git diff --quiet && git diff --staged --quiet || (git commit -m "📦 Update sitemap data: $(date +'%Y-%m-%d')" && git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git)
+        TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      run: uv run python main.py
