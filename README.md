@@ -25,13 +25,18 @@ https://1games.io/action.games             → 丢弃（分类页）
 
 ### 存储：Turso（libSQL / SQLite）
 
+正式数据在 **Turso**（托管 libSQL），不进 Git。连接串只放环境变量，见下方「数据库」。
+
 | 表 | 作用 |
 |---|---|
 | `sightings` | `(slug, site)` → url / first_seen / last_seen |
 | `events` | 每日新增事件 `(date, slug, site)`，用于爆发计算 |
 | `games` | 汇总：`site_count`、`heat_score`、首末出现日 |
+| `site_sync` | 各站最近一次同步日（不再每天改全表 `last_seen`） |
 
 变更检测也走 `sightings`：某站首次出现的 slug 才记入 `events`；新站首跑只建基线、不告警。
+
+同步时只插入新收录，已有行不改 `last_seen`，避免把托管库免费额度写爆。站点「最近同步」看 `site_sync`。
 
 ### 热度：存量 + 爆发
 
@@ -136,12 +141,54 @@ heat:
 - `translation.enabled` 控制飞书卡片是否给游戏词附中文译名（每次通知时实时翻译，不缓存）。设 `enabled: false` 可关闭
 - `translation.providers` 按顺序尝试；默认 `google` → `mymemory`，均可无 key。机翻对游戏名不稳定，译不出则省略中文
 
-数据库连接不写进 `config.yaml`，用环境变量（本地可复制 `.env.example` 为 `.env`）：
+## 数据库
+
+### 为什么不把 `games.db` 放进 Git
+
+早期用本地 SQLite `data/games.db`，由 GitHub Actions 每天提交回仓库。库大约 77 MB，其中：
+
+| 表 | 大约体积 | 性质 |
+|---|---|---|
+| `sightings` | ~61 MB（约 40 万行） | 全量存量，判断「这站是不是第一次见到这个 slug」必须带着 |
+| `games` | ~13 MB | 由 sightings 汇总 |
+| `events` | ~3 MB | 才是按天新增的爆发记录 |
+
+SQLite 是二进制文件，Git 几乎无法做增量 diff。更糟的是旧逻辑每天把当天日期写回几乎所有 `sightings.last_seen`（约 39 万行），整份文件每天都变，`git pull` 接近再下一整份库（一次约 30 MB）。
+
+按 7 天拆成多个 `.db` **解决不了** pull 慢：`events` 按周切最多省几 MB；`sightings` 不是时间序列，查询和去重仍要一份完整快照。
+
+### 为什么选 Turso
+
+| 方案 | 结论 |
+|---|---|
+| 周增量 jsonl 留在 Git | 能加快 pull，但数据仍在仓库里 |
+| **Turso**（托管 SQLite / libSQL） | 与现有 SQL 最接近，免费档 5 GB / 5 亿次读 / 1000 万次写，够用 |
+| Cloudflare D1 | 免费档每天 10 万次写太紧，GitHub Actions 也不顺手 |
+| Neon / Supabase | 能用，但要改成 Postgres |
+| Git LFS | 历史干净一些，每次文件变了仍要下整份 80 MB |
+
+上云的前提是 **停掉每天改 39 万行 `last_seen`**，并按站一次查出已有 slug、只批量插入新行。否则 Turso / D1 免费额度会被写爆。
+
+区域选 **AWS AP Northeast (Tokyo)**：在国内读库延迟和线路通常最好。GitHub Actions 一天只写一两次，跑在美国多 100–200ms 无所谓。Turso 区域一般不能无损改，选错只能新建再导。
+
+控制台上传本地 `.db` 时，库必须是 WAL 模式。若提示 `upload works only for DBs with journal_mode=WAL`：
+
+```bash
+python -c "import sqlite3; c=sqlite3.connect('data/games.db'); print(c.execute('PRAGMA journal_mode=WAL').fetchone())"
+```
+
+### 环境变量（不写进 `config.yaml`）
+
+本地复制 `.env.example` 为 `.env`（`.env` 已 gitignore，不要提交）：
 
 ```bash
 TURSO_DATABASE_URL=libsql://sitemap-games-xxxx.aws-ap-northeast-1.turso.io
 TURSO_AUTH_TOKEN=...
 ```
+
+`main.py` / `api.py` / `push_burst.py` 启动时读这两个变量。单测仍用临时本地 SQLite，不连线上库。
+
+`data/games.db` 只作本机备份或一次性导入，**已从 Git 忽略**（`.gitignore` 的 `data/*.db`）。仓库索引里不再跟踪该文件；远程旧提交里的历史大文件还在，若要清历史需另做。
 
 ## 运行监控
 
@@ -199,7 +246,7 @@ uv run uvicorn api:app --reload --host 0.0.0.0 --port 8001
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| GET | `/health` | 健康检查，确认服务与 DB 路径 |
+| GET | `/health` | 健康检查，确认服务与当前库位置（Turso URL） |
 | GET | `/stats` | 库概览：游戏词 / 收录关系 / 事件 / 站点数 |
 | GET | `/games/burst` | **跨站爆发**（及时发现主入口） |
 | GET | `/games` | 热榜；可按 slug 模糊搜索、按最少站点数过滤 |
@@ -306,8 +353,9 @@ uv run pytest
 ├── translate.py            # 游戏词免费英译中（飞书卡片用）
 ├── config_loader.py        # 配置加载
 ├── config.yaml             # 站点 / 热度 / 通知配置
-├── .env.example            # Turso 环境变量模板
+├── .env.example            # Turso 环境变量模板（复制为 .env，勿提交）
 ├── test_main.py / test_api.py
+├── data/games.db           # 仅本地备份，已 gitignore，正式数据在 Turso
 └── .github/workflows/      # GitHub Actions 定时监控
 ```
 
@@ -316,7 +364,7 @@ uv run pytest
 工作流：`.github/workflows/sitemap-check.yml`
 
 - 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
-- 流程：`uv sync --frozen` → 运行监控，结果写入 Turso
+- 流程：`uv sync --frozen` → 运行监控，结果写入 Turso（不再把数据库提交回仓库）
 - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
 
 ## 常用命令
