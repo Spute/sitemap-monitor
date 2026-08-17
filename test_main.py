@@ -5,6 +5,13 @@ from notify import build_burst_card, slug_to_trends_keyword
 from sitemap import matches_patterns, parse_txt, parse_xml, process_sitemap
 from slug import extract_slug, is_game_slug, to_game_entries
 from store import GameStore
+from translate import (
+    attach_zh_names,
+    contains_cjk,
+    slug_to_phrase,
+    translate_phrase,
+    translate_slugs,
+)
 
 
 def test_parse_xml():
@@ -275,6 +282,8 @@ def test_game_store_burst(tmp_path):
             threshold=2,
         )
         assert [g["slug"] for g in involving] == ["hill-sprint"]
+        assert store.slugs_with_events_on(today) == {"hill-sprint", "solo-game"}
+        assert store.slugs_with_events_on("1999-01-01") == set()
 
         game = store.conn.execute(
             "SELECT site_count, heat_score FROM games WHERE slug = ?",
@@ -404,6 +413,89 @@ def test_build_burst_card_includes_trends_links():
     assert "**Google Trends 对比查询**" in body
     assert f"```\n{batch_url}\n```" in body
     assert "第 1 批" not in body
+
+
+def test_build_burst_card_includes_zh():
+    card = build_burst_card(
+        [
+            {
+                "slug": "hill-sprint",
+                "zh": "山地冲刺",
+                "first_site": "1Games",
+                "first_seen": "2026-08-11",
+                "first_url": "https://1games.io/hill-sprint",
+                "today_sites": 1,
+                "site_count": 2,
+                "sites": "1Games",
+            }
+        ],
+        window_days=7,
+    )
+    body = card["card"]["elements"][0]["text"]["content"]
+    assert "**[hill-sprint](https://1games.io/hill-sprint)**（山地冲刺）" in body
+
+
+def test_slug_to_phrase_and_cjk():
+    assert slug_to_phrase("hill-sprint") == "hill sprint"
+    assert contains_cjk("山地冲刺")
+    assert not contains_cjk("hill sprint")
+    assert not contains_cjk("")
+
+
+def test_translate_phrase_google_then_mymemory(monkeypatch):
+    calls = []
+
+    def fake_google(phrase):
+        calls.append(("google", phrase))
+        return "山地冲刺"
+
+    def fake_mymemory(phrase):
+        calls.append(("mymemory", phrase))
+        return "丘陵冲刺"
+
+    monkeypatch.setattr("translate._translate_google", fake_google)
+    monkeypatch.setattr("translate._translate_mymemory", fake_mymemory)
+    zh, provider = translate_phrase("hill sprint")
+    assert zh == "山地冲刺"
+    assert provider == "google"
+    assert calls == [("google", "hill sprint")]
+
+
+def test_translate_phrase_falls_back(monkeypatch):
+    import requests
+
+    def boom(phrase):
+        raise requests.RequestException("blocked")
+
+    monkeypatch.setattr("translate._translate_google", boom)
+    monkeypatch.setattr("translate._translate_mymemory", lambda phrase: "几何冲刺")
+    zh, provider = translate_phrase("geometry dash")
+    assert zh == "几何冲刺"
+    assert provider == "mymemory"
+
+
+def test_translate_slugs_realtime(monkeypatch):
+    called = []
+
+    def fake_google(phrase):
+        called.append(phrase)
+        return "山地冲刺"
+
+    monkeypatch.setattr("translate._translate_google", fake_google)
+    monkeypatch.setattr("translate.time.sleep", lambda _: None)
+    result = translate_slugs(["hill-sprint", "hill-sprint"])
+    assert result == {"hill-sprint": "山地冲刺"}
+    assert called == ["hill sprint"]
+
+
+def test_attach_zh_names_disabled(monkeypatch):
+    monkeypatch.setattr(
+        "translate.translate_phrase",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("disabled")),
+    )
+    games = [{"slug": "hill-sprint"}]
+    attach_zh_names(games, {"translation": {"enabled": False}})
+    assert "zh" not in games[0]
 
 
 def test_process_sitemap_live():

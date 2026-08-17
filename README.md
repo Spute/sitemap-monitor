@@ -45,7 +45,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 ```text
 抓 sitemap → 过滤噪音 → 提取 slug
   → 与 sightings 同步（新 slug 写 events）
-  → 更新 games 热度 → 飞书推「跨站热游」
+  → 更新 games 热度 → 实时英译中 → 飞书推「跨站热游」
 ```
 
 ## 功能
@@ -56,8 +56,15 @@ https://1games.io/action.games             → 丢弃（分类页）
 - 网络超时 / 连接重置时自动重试 1 次；抓取无 URL 时打 warning
 - 提取并过滤游戏 slug，写入 SQLite
 - 按站检测新增游戏词，记录每日 events
-- 跨站爆发热度评估；达阈值时飞书通知
+- 跨站爆发热度评估；达阈值时飞书通知（卡片附中文译名）
 - 按配置清理过期 events
+
+### 飞书通知（`notify.py` / `translate.py` / `push_burst.py`）
+
+- 跨站爆发时发互动卡片；游戏词旁附中文译名，如 `hill-sprint（山地冲刺）`
+- 译名用免费接口实时翻译，**不写数据库**：先 Google 网页翻译（无需 key），失败再试 MyMemory 官方免费 API
+- 只展示含汉字的译文；专有名词译不出来则只显示原文，不影响通知发出
+- 卡片最多展示 20 个词；可用 `push_burst.py` 按今天 / 昨天 / 指定日补推或预览
 
 ### 查询侧（`api.py` / FastAPI）
 
@@ -107,6 +114,12 @@ feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/..."
   secret: "YOUR_SECRET"
 
+translation:
+  enabled: true
+  providers:
+    - google      # Google 网页翻译（无需 key）
+    - mymemory    # MyMemory 官方免费 API（无需 key）
+
 storage:
   db_path: "./data/games.db"
 
@@ -122,6 +135,8 @@ heat:
 - `strip_id_suffix` 可选；去掉 slug 末尾 `-数字`（如 Playhop 的 `/app/foosball-96247`）
 - `slug_after_marker` 可选；slug 取 `game_path_marker` 后一段（如 Friv 的 `/z/games/{slug}/game.html`）
 - `slug_last_segment` 可选；无 marker 时也取 path 最后一段（如 PlayA 的 `/{category}/{slug}/`）
+- `translation.enabled` 控制飞书卡片是否给游戏词附中文译名（每次通知时实时翻译，不缓存）。设 `enabled: false` 可关闭
+- `translation.providers` 按顺序尝试；默认 `google` → `mymemory`，均可无 key。机翻对游戏名不稳定，译不出则省略中文
 
 ## 运行监控
 
@@ -131,18 +146,34 @@ uv run python main.py
 
 ## 手动推送飞书（基于当前数据库）
 
-不重新抓取 sitemap，直接读取 `data/games.db` 中的爆发结果并发飞书：
+不重新抓取 sitemap，直接读取 `data/games.db` 中的爆发结果并发飞书。候选范围始终是 **近窗爆发词**（默认 7 天、跨站数 ≥ 阈值），再用日期参数收窄「这一天有新增站点」的子集。不加日期参数 = 近窗全部，不是历史所有天。
+
+`--today` / `--yesterday` / `--on` 三选一；`--dry-run` 只打印卡片、不发送，可与日期参数组合。
 
 ```bash
-# 推送近窗全部爆发词
+# 近窗全部爆发词（会实时翻译后发飞书）
 uv run python push_burst.py
 
-# 只推送今天有新增站点的词
+# 只推送今天 / 昨天 / 指定日有新增站点的爆发词
 uv run python push_burst.py --today
+uv run python push_burst.py --yesterday
+uv run python push_burst.py --on 2026-08-16
 
-# 只预览卡片内容，不实际发送
+# 只预览卡片，不发送
+uv run python push_burst.py --dry-run
 uv run python push_burst.py --today --dry-run
+uv run python push_burst.py --yesterday --dry-run
+uv run python push_burst.py --on 2026-08-16 --dry-run
 ```
+
+| 参数 | 含义 |
+|---|---|
+| （无日期） | 近窗内全部爆发词 |
+| `--today` | 近窗爆发词里，**今天**有新增站点的 |
+| `--yesterday` | 近窗爆发词里，**昨天**有新增站点的 |
+| `--on YYYY-MM-DD` | 近窗爆发词里，**该日**有新增站点的 |
+| `--dry-run` | 打印卡片内容，不调用飞书 Webhook |
+| `--config` | 配置文件路径，默认 `config.yaml` |
 
 ## 查询 API
 
@@ -267,6 +298,7 @@ uv run pytest
 ├── sitemap.py              # sitemap 拉取与解析
 ├── store.py                # SQLite（sightings / events / games）
 ├── notify.py               # 飞书跨站爆发通知
+├── translate.py            # 游戏词免费英译中（飞书卡片用）
 ├── config_loader.py        # 配置加载
 ├── config.yaml             # 站点 / 热度 / 通知配置
 ├── test_main.py / test_api.py
@@ -291,8 +323,10 @@ uv lock                    # 更新锁文件
 uv run pytest              # 运行测试
 uv run pytest -v -s        # 运行测试详情
 uv run python main.py      # 运行监控
-uv run python push_burst.py           # 基于当前 DB 推送飞书
-uv run python push_burst.py --today   # 只推今天有新增的词
-uv run python push_burst.py --dry-run # 预览卡片不发送
+uv run python push_burst.py                 # 推送近窗全部爆发词
+uv run python push_burst.py --today         # 只推今天有新增的词
+uv run python push_burst.py --yesterday     # 只推昨天有新增的词
+uv run python push_burst.py --on 2026-08-16 # 只推指定日有新增的词
+uv run python push_burst.py --yesterday --dry-run  # 预览昨天的卡片，不发送
 uv run uvicorn api:app --reload --port 8001   # 启动查询 API
 ```

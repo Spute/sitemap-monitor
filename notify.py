@@ -63,9 +63,11 @@ def build_burst_card(burst_games, window_days):
         else:
             sites_md = (g.get('sites') or '').replace(',', ', ') or '—'
 
+        zh = g.get("zh")
+        zh_md = f"（{zh}）" if zh else ""
         trends_md = f"｜{_md_link('Trends', trends_url)}" if trends_url else ""
         lines.append(
-            f"• **{_md_link(g['slug'], first_url)}**{trends_md}\n"
+            f"• **{_md_link(g['slug'], first_url)}**{zh_md}{trends_md}\n"
             f"  近窗最早：{_md_link(first_site, first_url)}（{first_seen}）\n"
             f"  今日新增：{today_sites} 站｜累计：{site_count} 站\n"
             f"  近 {window_days} 天新增：{sites_md}"

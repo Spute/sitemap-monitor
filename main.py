@@ -8,6 +8,7 @@ from notify import build_burst_card, send_feishu_notification
 from sitemap import process_sitemap
 from slug import to_game_entries
 from store import GameStore
+from translate import attach_zh_names
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -84,6 +85,7 @@ def main(config_path='config.yaml'):
         )
         if burst:
             logging.info(f"跨站爆发 {len(burst)} 个游戏词，发送飞书通知")
+            attach_zh_names(burst, config)
             send_feishu_notification(
                 build_burst_card(burst, burst_window_days), config
             )

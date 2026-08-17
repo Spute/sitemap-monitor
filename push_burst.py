@@ -1,28 +1,51 @@
 """基于当前数据库推送飞书跨站爆发通知（不抓 sitemap）。
 
 用法:
-  uv run python push_burst.py              # 推送近窗全部爆发词
-  uv run python push_burst.py --today      # 只推送今天有新增的词
-  uv run python push_burst.py --dry-run    # 只打印卡片内容，不发送
+  uv run python push_burst.py                 # 推送近窗全部爆发词
+  uv run python push_burst.py --today         # 只推送今天有新增的词
+  uv run python push_burst.py --yesterday     # 只推送昨天有新增的词
+  uv run python push_burst.py --on 2026-08-16 # 只推送指定日有新增的词
+  uv run python push_burst.py --dry-run       # 只打印卡片内容，不发送
 """
 
 import argparse
 import logging
 import sys
+from datetime import datetime, timedelta
 
 from config_loader import load_config
 from notify import build_burst_card, send_feishu_notification
 from store import GameStore
+from translate import attach_zh_names
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
+def _parse_on_date(value):
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError as e:
+        raise argparse.ArgumentTypeError("日期格式应为 YYYY-MM-DD") from e
+
+
 def main(config_path="config.yaml"):
     parser = argparse.ArgumentParser(description="基于当前 DB 推送飞书爆发通知")
-    parser.add_argument(
+    day = parser.add_mutually_exclusive_group()
+    day.add_argument(
         "--today",
         action="store_true",
         help="只推送今天有新增站点的爆发词",
+    )
+    day.add_argument(
+        "--yesterday",
+        action="store_true",
+        help="只推送昨天有新增站点的爆发词",
+    )
+    day.add_argument(
+        "--on",
+        metavar="YYYY-MM-DD",
+        type=_parse_on_date,
+        help="只推送指定日有新增站点的爆发词",
     )
     parser.add_argument(
         "--dry-run",
@@ -42,17 +65,28 @@ def main(config_path="config.yaml"):
     threshold = heat.get("alert_site_threshold", 2)
     db_path = config.get("storage", {}).get("db_path", "./data/games.db")
 
+    if args.yesterday:
+        on_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    elif args.on:
+        on_date = args.on
+    elif args.today:
+        on_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        on_date = None
+
     store = GameStore(db_path)
     try:
         burst = store.burst_games(window, threshold)
-        if args.today:
-            burst = [g for g in burst if (g.get("today_sites") or 0) > 0]
+        if on_date:
+            wanted = store.slugs_with_events_on(on_date)
+            burst = [g for g in burst if g["slug"] in wanted]
 
         if not burst:
-            scope = "今天有新增的" if args.today else "近窗"
+            scope = f"{on_date} 有新增的" if on_date else "近窗"
             logging.info(f"无可推送的{scope}爆发词")
             return 0
 
+        attach_zh_names(burst, config)
         card = build_burst_card(burst, window)
         logging.info(f"准备推送 {len(burst)} 个爆发词")
         print(card["card"]["elements"][0]["text"]["content"])

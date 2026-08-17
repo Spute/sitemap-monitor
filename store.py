@@ -235,6 +235,14 @@ class GameStore:
                 for name in site_names
             ]
 
+    def slugs_with_events_on(self, date):
+        """某日有新增收录事件的 slug 集合。"""
+        rows = self.conn.execute(
+            "SELECT DISTINCT slug FROM events WHERE date = ?",
+            (date,),
+        ).fetchall()
+        return {r["slug"] for r in rows}
+
     def burst_games_involving(self, slugs, window_days, threshold):
         """爆发列表中与本次 touched slugs 有交集的子集（避免每次全量告警）。"""
         if not slugs:

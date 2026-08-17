@@ -1020,6 +1020,13 @@ feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
   secret: "YOUR_SECRET"
 
+# 飞书卡片给游戏词附中文译名；无需 API key，每次通知时实时翻译
+translation:
+  enabled: true
+  providers:
+    - google      # Google 网页翻译（无需 key）
+    - mymemory    # MyMemory 官方免费 API（无需 key，约 5000 词/天）
+
 storage:
   db_path: "./data/games.db"
 
