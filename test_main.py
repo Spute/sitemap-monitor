@@ -4,7 +4,7 @@ from build_trend_urls import DEFAULT_ANCHOR, build_trends_url
 from notify import build_burst_card, slug_to_trends_keyword
 from sitemap import matches_patterns, parse_txt, parse_xml, process_sitemap
 from slug import extract_slug, is_game_slug, to_game_entries
-from store import GameStore, open_store
+from store import GameStore, is_store_auth_error, open_store, reopen_store
 from translate import (
     attach_zh_names,
     contains_cjk,
@@ -236,6 +236,92 @@ def test_open_store_local_path(tmp_path):
         assert store.stats()["games"] == 0
     finally:
         store.close()
+
+
+def test_is_store_auth_error():
+    hrana = ValueError(
+        'Hrana: `api error: `status=400 Bad Request, '
+        'body={"error":"Protocol error: failed to parse http request: invalid token"}``'
+    )
+    assert is_store_auth_error(hrana)
+    assert is_store_auth_error(ValueError("Hrana: 401 Unauthorized"))
+    assert not is_store_auth_error(ValueError("UNIQUE constraint failed"))
+    assert not is_store_auth_error(KeyError("slug"))
+
+
+def test_main_skips_site_on_auth_error(tmp_path, monkeypatch):
+    from main import main
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+sites:
+  - name: WooGames
+    sitemap_urls:
+      - https://woogames.example/sitemap.xml
+    active: true
+  - name: NowGames
+    sitemap_urls:
+      - https://nowgames.example/sitemap.xml
+    active: true
+heat:
+  burst_window_days: 7
+  alert_site_threshold: 2
+translation:
+  enabled: false
+""",
+        encoding="utf-8",
+    )
+    db_path = tmp_path / "games.db"
+    synced = []
+
+    def fake_process_sitemap(url, include_sitemap_patterns=None):
+        host = "woogames.example" if "woogames" in url else "nowgames.example"
+        return [f"https://{host}/hill-sprint"]
+
+    orig_sync = GameStore.sync_site
+
+    def flaky_sync(self, site, entries, today, burst_window_days):
+        if site == "WooGames":
+            raise ValueError(
+                'Hrana: `api error: `status=400 Bad Request, '
+                'body={"error":"Protocol error: failed to parse http request: invalid token"}``'
+            )
+        synced.append(site)
+        return orig_sync(self, site, entries, today, burst_window_days)
+
+    monkeypatch.setattr("main.process_sitemap", fake_process_sitemap)
+    monkeypatch.setattr("main.open_store", lambda: GameStore(db_path))
+    monkeypatch.setattr(GameStore, "sync_site", flaky_sync)
+    monkeypatch.setattr("main.send_feishu_notification", lambda *a, **k: None)
+
+    main(str(config_path))
+    assert synced == ["NowGames"]
+    store = GameStore(db_path)
+    try:
+        sites = {row["site"] for row in store.list_sites()}
+        assert "NowGames" in sites
+        assert "WooGames" not in sites
+    finally:
+        store.close()
+
+
+def test_reopen_store_sqlite(tmp_path):
+    first = GameStore(tmp_path / "games.db")
+    first.conn.execute(
+        "INSERT INTO site_sync (site, last_sync) VALUES (?, ?)",
+        ("Demo", "2026-08-20"),
+    )
+    first.conn.commit()
+    second = reopen_store(first)
+    try:
+        row = second.conn.execute(
+            "SELECT last_sync FROM site_sync WHERE site = ?",
+            ("Demo",),
+        ).fetchone()
+        assert row["last_sync"] == "2026-08-20"
+    finally:
+        second.close()
 
 
 def test_sync_site_baseline_then_detects_new(tmp_path):

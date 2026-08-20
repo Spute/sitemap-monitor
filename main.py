@@ -7,7 +7,7 @@ from config_loader import load_config
 from notify import build_burst_card, send_feishu_notification
 from sitemap import process_sitemap
 from slug import to_game_entries
-from store import open_store
+from store import is_store_auth_error, open_store, reopen_store
 from translate import attach_zh_names
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -74,26 +74,49 @@ def main(config_path='config.yaml'):
         for site in config['sites']:
             if not site.get('active', True):
                 continue
-            touched_slugs.extend(
-                process_site(site, store, today, burst_window_days)
-            )
+            try:
+                touched_slugs.extend(
+                    process_site(site, store, today, burst_window_days)
+                )
+            except Exception as exc:
+                if not is_store_auth_error(exc):
+                    raise
+                logging.warning(
+                    "%s: 数据库鉴权失败，跳过该站: %s",
+                    site.get('name', '?'),
+                    exc,
+                )
+                try:
+                    store = reopen_store(store)
+                except Exception as reopen_exc:
+                    if not is_store_auth_error(reopen_exc):
+                        raise
+                    logging.warning("数据库重连失败: %s", reopen_exc)
 
         # 只对「本次新出现」且已达跨站阈值的词告警
-        burst = store.burst_games_involving(
-            touched_slugs, burst_window_days, alert_threshold
-        )
-        if burst:
-            logging.info(f"跨站爆发 {len(burst)} 个游戏词，发送飞书通知")
-            attach_zh_names(burst, config)
-            send_feishu_notification(
-                build_burst_card(burst, burst_window_days), config
+        try:
+            burst = store.burst_games_involving(
+                touched_slugs, burst_window_days, alert_threshold
             )
-        else:
-            logging.info("本次无跨站爆发游戏词")
+            if burst:
+                logging.info(f"跨站爆发 {len(burst)} 个游戏词，发送飞书通知")
+                attach_zh_names(burst, config)
+                send_feishu_notification(
+                    build_burst_card(burst, burst_window_days), config
+                )
+            else:
+                logging.info("本次无跨站爆发游戏词")
 
-        store.cleanup_events(events_retention_days)
+            store.cleanup_events(events_retention_days)
+        except Exception as exc:
+            if not is_store_auth_error(exc):
+                raise
+            logging.warning("数据库鉴权失败，跳过爆发告警与事件清理: %s", exc)
     finally:
-        store.close()
+        try:
+            store.close()
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':

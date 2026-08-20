@@ -68,6 +68,35 @@ class _LibsqlConn:
         self._conn.close()
 
 
+def is_store_auth_error(exc):
+    """Turso / Hrana 鉴权或协议层失败（token 无效、会话损坏等）。"""
+    text = str(exc).lower()
+    return (
+        'invalid token' in text
+        or 'unauthorized' in text
+        or ('hrana' in text and 'protocol error' in text)
+        or ('hrana' in text and '401' in text)
+    )
+
+
+def reopen_store(store):
+    """关闭坏掉的会话并按原参数重连。"""
+    db_path = store.db_path
+    url = store._url
+    auth_token = store._auth_token
+    check_same_thread = store._check_same_thread
+    try:
+        store.close()
+    except Exception:
+        pass
+    return GameStore(
+        db_path,
+        url=url,
+        auth_token=auth_token,
+        check_same_thread=check_same_thread,
+    )
+
+
 def open_store(*, db_path=None, check_same_thread=True):
     """打开存储。显式 db_path 走本地 SQLite；否则读 Turso 环境变量。"""
     if db_path is not None:
@@ -101,6 +130,9 @@ class GameStore:
         auth_token=None,
         check_same_thread=True,
     ):
+        self._url = url
+        self._auth_token = auth_token
+        self._check_same_thread = check_same_thread
         if url:
             if not auth_token:
                 raise ValueError('Turso 连接需要 auth_token')
