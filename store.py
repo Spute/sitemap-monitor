@@ -6,6 +6,7 @@
 
 import logging
 import os
+import re
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -14,6 +15,7 @@ from dotenv import load_dotenv
 
 _ROOT = Path(__file__).resolve().parent
 _WRITE_CHUNK = 400
+_TURSO_WRITE_CHUNK = 40
 _REFRESH_CHUNK = 200
 
 load_dotenv(_ROOT / '.env')
@@ -67,6 +69,18 @@ class _LibsqlConn:
 
     def close(self):
         self._conn.close()
+
+
+def _split_values_clause(sql):
+    """把 `INSERT ... VALUES (?, ?) ON CONFLICT ...` 拆成可展开的多行 INSERT。"""
+    stripped = sql.strip().rstrip(';')
+    match = re.search(r'(?is)VALUES\s*(\(\s*\?[^)]*\))', stripped)
+    if not match:
+        raise ValueError('批量写入需要 VALUES (?, ...) 形式的 SQL')
+    prefix = stripped[: match.start()] + 'VALUES '
+    row_tpl = re.sub(r'\s+', '', match.group(1))
+    suffix = stripped[match.end() :].strip()
+    return prefix, row_tpl, suffix
 
 
 def is_store_auth_error(exc):
@@ -203,11 +217,33 @@ class GameStore:
     def close(self):
         self.conn.close()
 
-    def _executemany_chunked(self, sql, rows, chunk_size=_WRITE_CHUNK):
+    def _executemany_chunked(self, sql, rows, chunk_size=None):
+        """用一条多行 INSERT 代替 executemany，避免 Turso/Hrana 批量接口挂死。"""
         if not rows:
             return
-        for i in range(0, len(rows), chunk_size):
-            self.conn.executemany(sql, rows[i : i + chunk_size])
+        if chunk_size is None:
+            chunk_size = (
+                _TURSO_WRITE_CHUNK if self.backend == 'turso' else _WRITE_CHUNK
+            )
+        prefix, row_tpl, suffix = _split_values_clause(sql)
+        total = len(rows)
+        for i in range(0, total, chunk_size):
+            chunk = rows[i : i + chunk_size]
+            stmt = prefix + ','.join(row_tpl for _ in chunk)
+            if suffix:
+                stmt = f'{stmt} {suffix}'
+            params = [value for row in chunk for value in row]
+            self.conn.execute(stmt, params)
+            done = min(i + chunk_size, total)
+            if total >= 100:
+                logging.info("  写入进度 %s/%s", done, total)
+
+    def _site_has_sync(self, site):
+        row = self.conn.execute(
+            'SELECT 1 FROM site_sync WHERE site = ? LIMIT 1',
+            (site,),
+        ).fetchone()
+        return row is not None
 
     def site_has_sightings(self, site):
         """该站是否已有基线数据。"""
@@ -264,59 +300,41 @@ class GameStore:
         if not unique:
             return
         cutoff = self.window_cutoff(burst_window_days)
-        for i in range(0, len(unique), _REFRESH_CHUNK):
+        total = len(unique)
+        for i in range(0, total, _REFRESH_CHUNK):
             chunk = unique[i : i + _REFRESH_CHUNK]
             placeholders = ','.join('?' for _ in chunk)
-            stats_rows = self.conn.execute(
+            self.conn.execute(
                 f"""
-                SELECT slug,
-                       MIN(first_seen) AS first_seen,
-                       MAX(last_seen) AS last_seen,
-                       COUNT(*) AS site_count
-                FROM sightings
-                WHERE slug IN ({placeholders})
-                GROUP BY slug
-                """,
-                chunk,
-            ).fetchall()
-            burst_rows = self.conn.execute(
-                f"""
-                SELECT slug, COUNT(DISTINCT site) AS n
-                FROM events
-                WHERE slug IN ({placeholders}) AND date >= ?
-                GROUP BY slug
-                """,
-                (*chunk, cutoff),
-            ).fetchall()
-            burst_map = {row['slug']: row['n'] for row in burst_rows}
-            payload = []
-            for stats in stats_rows:
-                if not stats['site_count']:
-                    continue
-                heat = float(stats['site_count']) + 2.0 * float(
-                    burst_map.get(stats['slug'], 0)
-                )
-                payload.append(
-                    (
-                        stats['slug'],
-                        stats['first_seen'],
-                        stats['last_seen'],
-                        stats['site_count'],
-                        heat,
-                    )
-                )
-            self._executemany_chunked(
-                """
                 INSERT INTO games (slug, first_seen, last_seen, site_count, heat_score)
-                VALUES (?, ?, ?, ?, ?)
+                SELECT s.slug,
+                       MIN(s.first_seen) AS first_seen,
+                       MAX(s.last_seen) AS last_seen,
+                       COUNT(*) AS site_count,
+                       COUNT(*) + 2.0 * COALESCE(MAX(b.n), 0) AS heat_score
+                FROM sightings s
+                LEFT JOIN (
+                    SELECT slug, COUNT(DISTINCT site) AS n
+                    FROM events
+                    WHERE date >= ? AND slug IN ({placeholders})
+                    GROUP BY slug
+                ) b ON b.slug = s.slug
+                WHERE s.slug IN ({placeholders})
+                GROUP BY s.slug
                 ON CONFLICT(slug) DO UPDATE SET
                     first_seen = excluded.first_seen,
                     last_seen = excluded.last_seen,
                     site_count = excluded.site_count,
                     heat_score = excluded.heat_score
                 """,
-                payload,
+                (cutoff, *chunk, *chunk),
             )
+            if total >= 200:
+                logging.info(
+                    "  热度刷新 %s/%s",
+                    min(i + _REFRESH_CHUNK, total),
+                    total,
+                )
 
     def sync_site(self, site, entries, today, burst_window_days):
         """用当前 sitemap 游戏目录同步某站。
@@ -326,7 +344,8 @@ class GameStore:
         - 已存在的收录不再每天改 last_seen
         """
         existing = self._slugs_for_site(site)
-        baseline = not existing
+        # 以 site_sync 为准：中途失败后重跑仍当基线，避免把剩余存量当成爆发
+        baseline = not self._site_has_sync(site)
         new_rows = []
         seen_new = set()
         for slug, url in entries:
@@ -361,7 +380,10 @@ class GameStore:
                         for slug, site, url, _, _ in new_rows
                     ],
                 )
-            self._refresh_games([row[0] for row in new_rows], burst_window_days)
+            self._refresh_games(
+                [row[0] for row in new_rows],
+                burst_window_days,
+            )
 
         self.conn.execute(
             """

@@ -354,6 +354,64 @@ def test_sync_site_baseline_then_detects_new(tmp_path):
         store.close()
 
 
+def test_split_values_clause_keeps_on_conflict():
+    from store import _split_values_clause
+
+    prefix, row_tpl, suffix = _split_values_clause(
+        """
+        INSERT INTO games (slug, first_seen, last_seen, site_count, heat_score)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(slug) DO UPDATE SET
+            first_seen = excluded.first_seen
+        """
+    )
+    assert row_tpl == "(?,?,?,?,?)"
+    assert prefix.strip().endswith("VALUES")
+    assert "ON CONFLICT" in suffix
+
+
+def test_sync_site_chunked_baseline_insert(tmp_path):
+    today = datetime.now().strftime("%Y-%m-%d")
+    store = GameStore(tmp_path / "games.db")
+    try:
+        entries = [
+            (f"game-{i}", f"https://example.com/game-{i}") for i in range(90)
+        ]
+        assert store.sync_site("Demo", entries, today, 7) == []
+        assert store.conn.execute("SELECT COUNT(*) FROM sightings").fetchone()[0] == 90
+        assert store.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+        assert store.conn.execute("SELECT COUNT(*) FROM games").fetchone()[0] == 90
+    finally:
+        store.close()
+
+
+def test_incomplete_baseline_does_not_emit_events(tmp_path):
+    today = datetime.now().strftime("%Y-%m-%d")
+    store = GameStore(tmp_path / "games.db")
+    try:
+        store.conn.execute(
+            "INSERT INTO sightings (slug, site, url, first_seen, last_seen) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("old", "Demo", "https://example.com/old", today, today),
+        )
+        store.conn.commit()
+        result = store.sync_site(
+            "Demo",
+            [
+                ("old", "https://example.com/old"),
+                ("new", "https://example.com/new"),
+            ],
+            today,
+            7,
+        )
+        assert result == []
+        assert store.conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 0
+        sites = {row["site"] for row in store.list_sites()}
+        assert "Demo" in sites
+    finally:
+        store.close()
+
+
 def test_game_store_burst(tmp_path):
     today = datetime.now().strftime("%Y-%m-%d")
     store = GameStore(tmp_path / "games.db")
