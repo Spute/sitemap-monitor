@@ -37,6 +37,7 @@ def process_site(site, store, today, burst_window_days):
     if not all_urls:
         logging.warning(f"{site_name}: 抓取 sitemap 未得到任何 URL，请检查站点配置或可达性")
         return []
+    logging.info(f"{site_name}: 抓到 {len(all_urls)} 个 URL")
 
     entries = to_game_entries(
         all_urls,
@@ -49,6 +50,8 @@ def process_site(site, store, today, burst_window_days):
         logging.warning(
             f"{site_name}: 抓到 {len(all_urls)} 个 URL，但过滤后无游戏词，请检查噪音规则或 game_path_marker"
         )
+    else:
+        logging.info(f"{site_name}: 提取 {len(entries)} 个游戏词，开始同步")
     newly_seen = store.sync_site(site_name, entries, today, burst_window_days)
 
     if newly_seen:

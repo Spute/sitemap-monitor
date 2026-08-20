@@ -4,6 +4,7 @@
 测试与离线调试可传入本地 SQLite 路径。
 """
 
+import logging
 import os
 import sqlite3
 from datetime import datetime, timedelta
@@ -335,6 +336,12 @@ class GameStore:
             new_rows.append((slug, site, url, today, today))
 
         if new_rows:
+            logging.info(
+                "%s: 写入 %s 条新收录%s",
+                site,
+                len(new_rows),
+                '（建基线）' if baseline else '',
+            )
             self._executemany_chunked(
                 """
                 INSERT OR IGNORE INTO sightings

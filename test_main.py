@@ -451,15 +451,15 @@ def test_process_sitemap_index_recursive(monkeypatch):
     class FakeResponse:
         def __init__(self, content):
             self.content = content
+            self.status_code = 200
 
         def raise_for_status(self):
             return None
 
-    class FakeScraper:
-        def get(self, url, timeout=10):
-            return FakeResponse(payloads[url])
+    def fake_get(url, timeout=20, headers=None):
+        return FakeResponse(payloads[url])
 
-    monkeypatch.setattr("sitemap.cloudscraper.create_scraper", lambda: FakeScraper())
+    monkeypatch.setattr("sitemap.requests.get", fake_get)
 
     urls = process_sitemap(
         "https://example.com/sitemap-index.xml",
@@ -479,23 +479,62 @@ def test_fetch_sitemap_retries_once(monkeypatch):
 
     class FakeResponse:
         content = b"https://example.com/a\n"
+        status_code = 200
 
         def raise_for_status(self):
             return None
 
-    class FakeScraper:
-        def get(self, url, timeout=10):
-            calls["n"] += 1
-            if calls["n"] == 1:
-                raise requests.exceptions.ReadTimeout("timed out")
-            return FakeResponse()
+    def fake_get(url, timeout=20, headers=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise requests.exceptions.ReadTimeout("timed out")
+        return FakeResponse()
 
-    monkeypatch.setattr("sitemap.cloudscraper.create_scraper", lambda: FakeScraper())
+    monkeypatch.setattr("sitemap.requests.get", fake_get)
     monkeypatch.setattr("sitemap.time.sleep", lambda _: None)
 
     content = fetch_sitemap_content("https://example.com/sitemap.xml")
     assert content == b"https://example.com/a\n"
     assert calls["n"] == 2
+
+
+def test_fetch_sitemap_cloudflare_fallback(monkeypatch):
+    import requests
+    from sitemap import fetch_sitemap_content
+
+    class ForbiddenResponse:
+        status_code = 403
+
+        def raise_for_status(self):
+            err = requests.HTTPError("403")
+            err.response = self
+            raise err
+
+    class OkResponse:
+        content = b"https://example.com/a\n"
+
+        def raise_for_status(self):
+            return None
+
+    class FakeScraper:
+        def get(self, url, timeout=20):
+            return OkResponse()
+
+    monkeypatch.setattr("sitemap.requests.get", lambda *a, **k: ForbiddenResponse())
+    monkeypatch.setattr("sitemap.cloudscraper.create_scraper", lambda: FakeScraper())
+    assert fetch_sitemap_content("https://example.com/sitemap.xml") == b"https://example.com/a\n"
+
+
+def test_call_with_timeout():
+    import time
+    from sitemap import _call_with_timeout
+
+    assert _call_with_timeout(lambda: 42, 1) == 42
+    try:
+        _call_with_timeout(lambda: time.sleep(2), 0.05)
+        raise AssertionError("expected TimeoutError")
+    except TimeoutError:
+        pass
 
 
 def test_slug_to_trends_keyword():
