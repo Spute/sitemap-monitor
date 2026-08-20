@@ -1016,6 +1016,29 @@ sites:
     sitemap_urls:
       - "https://drivequest.site/sitemap.xml"
     active: true
+  - name: "1001Games"
+    sitemap_urls:
+      - "https://www.1001games.com/sitemap.xml"
+    include_sitemap_patterns:
+      - "sitemap-games"
+    # /{category}/{slug}
+    slug_last_segment: true
+    active: true
+  - name: "ZapGames"
+    sitemap_urls:
+      - "https://zapgames.io/sitemap.xml"
+    active: true
+  - name: "GameMonetize"
+    sitemap_urls:
+      - "https://gamemonetize.com/sitemap.xml"
+    active: true
+  - name: "NowGG"
+    sitemap_urls:
+      - "https://now.gg/sitemap.xml"
+    include_sitemap_patterns:
+      - "sitemap_apps-"
+    game_path_marker: "/apps/"
+    active: true
 feishu:
   webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/c3319227-a85e-42dd-b70f-26edc690459d"
   secret: "YOUR_SECRET"

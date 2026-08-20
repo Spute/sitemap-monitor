@@ -27,6 +27,30 @@ def test_parse_xml():
     ]
 
 
+def test_parse_xml_skips_image_loc():
+    content = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+            xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+      <url>
+        <loc>https://example.com/sport/soccer</loc>
+        <image:image>
+          <image:loc>https://cdn.example.com/soccer.avif</image:loc>
+        </image:image>
+      </url>
+    </urlset>
+    """
+    assert parse_xml(content) == ["https://example.com/sport/soccer"]
+
+
+def test_parse_xml_sitemapindex():
+    content = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <sitemap><loc>https://example.com/sitemap-games.xml</loc></sitemap>
+    </sitemapindex>
+    """
+    assert parse_xml(content) == ["https://example.com/sitemap-games.xml"]
+
+
 def test_parse_txt():
     content = "https://example.com/a\n\nhttps://example.com/b\n"
     assert parse_txt(content) == [

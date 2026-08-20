@@ -22,10 +22,17 @@ def matches_patterns(url, patterns):
 
 
 def parse_xml(content):
-    """从 urlset / sitemapindex 的 <loc> 提取 URL。"""
+    """从 urlset / sitemapindex 的页面 <loc> 提取 URL。
+
+    只取 <url><loc> 与 <sitemap><loc>，忽略 image:loc 等扩展字段。
+    """
     urls = []
     soup = BeautifulSoup(content, 'xml')
     for loc in soup.find_all('loc'):
+        parent = loc.parent
+        parent_name = (parent.name or '').lower() if parent is not None else ''
+        if parent_name not in ('url', 'sitemap'):
+            continue
         url = loc.get_text().strip()
         if url:
             urls.append(url)
