@@ -77,6 +77,11 @@ https://1games.io/action.games             → 丢弃（分类页）
 - 内置 OpenAPI 文档（Swagger / ReDoc），响应字段均有中文说明
 - 覆盖：爆发列表、热榜搜索、一词详情、事件流、按站查看
 
+### Google Trends 相关查询（`trends_tool/`）
+
+- 按关键词拉取 Google Trends 的 related queries（热门 / 上升），无定时任务、无通知
+- 结果写入项目根目录 `data/`（已 gitignore）
+
 ## 环境要求
 
 - Python >= 3.12
@@ -331,6 +336,27 @@ curl "http://127.0.0.1:8001/games/hill-sprint"
 curl "http://127.0.0.1:8001/sites/1Games/games?limit=20"
 ```
 
+## Google Trends 相关查询
+
+`trends_tool/` 只做查询，不跑定时任务、不发提醒。结果默认写到项目根目录 `data/`（如 `data/related_queries_tier list_<时间戳>.json`）。
+
+```bash
+# 查询「tier list」近 7 天相关查询（全球）
+uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "now 7-d"
+
+# 多个关键词；只查美国
+uv run python trends_tool/trends_monitor.py --keywords game puzzle --timeframe "now 7-d" --geo US
+```
+
+| 参数 | 含义 |
+|---|---|
+| `--keywords` | 要查询的关键词，必填，可多个 |
+| `--timeframe` | 时间范围，默认 `now 1-d`；常用 `now 7-d`、`today 12-m`、`last-2-d` |
+| `--geo` | 地区代码，空表示全球，如 `US`、`CN` |
+| `--output-dir` | 结果目录，默认项目根目录 `data/` |
+
+也可用 `uv run python trends_tool/querytrends.py` 做单次示例查询（关键词写在脚本 `main()` 里）。
+
 ## 测试
 
 ```bash
@@ -355,7 +381,8 @@ uv run pytest
 ├── config.yaml             # 站点 / 热度 / 通知配置
 ├── .env.example            # Turso 环境变量模板（复制为 .env，勿提交）
 ├── test_main.py / test_api.py
-├── data/games.db           # 仅本地备份，已 gitignore，正式数据在 Turso
+├── trends_tool/            # Google Trends 相关查询（无定时 / 通知）
+├── data/                   # 本地输出（gitignore）：games.db、Trends JSON
 └── .github/workflows/      # GitHub Actions 定时监控
 ```
 
@@ -382,4 +409,5 @@ uv run python push_burst.py --yesterday     # 只推昨天有新增的词
 uv run python push_burst.py --on 2026-08-16 # 只推指定日有新增的词
 uv run python push_burst.py --yesterday --dry-run  # 预览昨天的卡片，不发送
 uv run uvicorn api:app --reload --port 8001   # 启动查询 API
+uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "now 7-d"  # Trends 近 7 天相关查询
 ```

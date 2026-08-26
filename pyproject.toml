@@ -14,6 +14,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "requests>=2.34.2",
     "uvicorn[standard]>=0.52.0",
+    "trendspy"
 ]
 
 [dependency-groups]
