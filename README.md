@@ -403,7 +403,7 @@ uv run pytest
   - 流程：`uv sync --frozen` → 运行 `main.py`
   - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
 - `.github/workflows/trends-interest-check.yml`：查 `kinebox` 热度趋势并飞书通知
-  - 触发：每天 UTC 23:00（北京时间 07:00）、手动 `workflow_dispatch`
+  - 触发：`main` 上 `trends_tool/` 变更、每日定时（UTC 22:00 / 03:00，北京时间 06:00 / 12:00）、手动 `workflow_dispatch`
   - 流程：`uv sync --frozen` → `trends_tool/trends_monitor.py --interest`
   - 飞书 webhook 读仓库内 `config.yaml`，无需额外 Secrets
 

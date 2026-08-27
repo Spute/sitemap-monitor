@@ -2,8 +2,16 @@
 name: Trends Interest Monitor
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'trends_tool/**'
+      - '.github/workflows/trends-interest-check.yml'
+  # 定时执行（GitHub cron 为 UTC）
   schedule:
-    - cron: '0 23 * * *'  # 北京时间 07:00
+    - cron: '0 22 * * *'  # 北京时间 06:00
+    - cron: '0 3 * * *'   # 北京时间 12:00，防止排队提前一个小时
   workflow_dispatch:
 
 jobs:
