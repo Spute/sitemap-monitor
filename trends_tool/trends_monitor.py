@@ -12,6 +12,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from config_loader import load_config
 from notify import build_interest_trend_card, send_feishu_notification
+from interest_store import load_interest_keywords
 from querytrends import (
     DEFAULT_DATA_DIR,
     _explore_page_url,
@@ -35,7 +36,6 @@ logging.basicConfig(
 DEFAULT_BATCH_SIZE = 5
 DEFAULT_BATCH_INTERVAL = 60
 DEFAULT_DELAY_BETWEEN_QUERIES = 5
-INTEREST_MONITOR_KEYWORDS = ['kinebox']
 DEFAULT_INTEREST_TIMEFRAME = 'now 1-d'
 
 
@@ -122,6 +122,33 @@ def _timeline_stats(timeline):
     }
 
 
+def _normalize_interest_targets(keywords, geo, timeframe):
+    """CLI 词列表或数据库行 → [{keyword, geo, timeframe}, ...]。"""
+    if not keywords:
+        return []
+    targets = []
+    for item in keywords:
+        if isinstance(item, str):
+            keyword = item.strip()
+            if not keyword:
+                continue
+            targets.append({
+                'keyword': keyword,
+                'geo': geo,
+                'timeframe': timeframe,
+            })
+            continue
+        keyword = (item.get('keyword') or '').strip()
+        if not keyword:
+            continue
+        targets.append({
+            'keyword': keyword,
+            'geo': (item.get('geo') or geo or '').strip(),
+            'timeframe': (item.get('timeframe') or timeframe or DEFAULT_INTEREST_TIMEFRAME).strip(),
+        })
+    return targets
+
+
 def monitor_interest_trends(
     keywords=None,
     timeframe=DEFAULT_INTEREST_TIMEFRAME,
@@ -129,25 +156,39 @@ def monitor_interest_trends(
     output_dir=None,
     config_path=None,
     notify=True,
+    keywords_db_path=None,
 ):
     """监控关键词热度随时间变化，判断是否翻倍上升，并将结果发到飞书。
 
-    默认固定监控 kinebox。
+    未传入 keywords 时从 Turso interest_keywords 表读取启用中的词。
     """
-    keywords = list(keywords) if keywords else list(INTEREST_MONITOR_KEYWORDS)
-    actual_timeframe = get_date_range_timeframe(timeframe)
+    if keywords:
+        targets = _normalize_interest_targets(keywords, geo, timeframe)
+    else:
+        targets = _normalize_interest_targets(
+            load_interest_keywords(db_path=keywords_db_path),
+            geo,
+            timeframe,
+        )
+    if not targets:
+        raise RuntimeError('没有可监控的关键词：请在 Turso interest_keywords 表写入 active=1 的行，或用 --keywords 指定')
+
     directory = create_output_directory(output_dir)
     config_file = config_path or str(PROJECT_ROOT / 'config.yaml')
     config = load_config(config_file) if notify else None
 
-    logging.info(f"Interest monitor: timeframe={actual_timeframe}, geo={geo or 'Global'}")
-    logging.info(f"Keywords ({len(keywords)}): {keywords}")
+    logging.info(f"Interest monitor targets ({len(targets)}): {[t['keyword'] for t in targets]}")
 
     results = []
-    for i, keyword in enumerate(keywords):
-        logging.info(f"Querying interest over time: {keyword}")
+    for i, target in enumerate(targets):
+        keyword = target['keyword']
+        item_geo = target['geo']
+        item_timeframe = get_date_range_timeframe(target['timeframe'])
+        logging.info(
+            f"Querying interest over time: {keyword} geo={item_geo or 'Global'} timeframe={item_timeframe}"
+        )
         try:
-            timeline = get_interest_over_time(keyword, geo=geo, timeframe=actual_timeframe)
+            timeline = get_interest_over_time(keyword, geo=item_geo, timeframe=item_timeframe)
         except Exception as e:
             logging.error(f"Failed to query {keyword}: {e}")
             timeline = None
@@ -167,14 +208,14 @@ def monitor_interest_trends(
             print_rising_interest(rising, keyword)
             stats = _timeline_stats(timeline)
             filename = save_interest_over_time(
-                keyword, timeline, directory=directory, geo=geo, timeframe=actual_timeframe
+                keyword, timeline, directory=directory, geo=item_geo, timeframe=item_timeframe
             )
             if filename:
                 logging.info(f"Saved {keyword} -> {filename}")
 
-        explore_url = _explore_page_url(keyword, geo, actual_timeframe)
+        explore_url = _explore_page_url(keyword, item_geo, item_timeframe)
         card = build_interest_trend_card(
-            keyword, actual_timeframe, geo, explore_url, rising, stats
+            keyword, item_timeframe, item_geo, explore_url, rising, stats
         )
         if notify and config:
             ok = send_feishu_notification(card, config)
@@ -187,7 +228,7 @@ def monitor_interest_trends(
             'explore_url': explore_url,
         })
 
-        if i < len(keywords) - 1:
+        if i < len(targets) - 1:
             wait_time = DEFAULT_DELAY_BETWEEN_QUERIES + random.uniform(0, 2)
             logging.info(f"Waiting {wait_time:.1f} seconds before next keyword...")
             time.sleep(wait_time)
@@ -200,9 +241,9 @@ def monitor_interest_trends(
 def main():
     parser = argparse.ArgumentParser(description='Google Trends 查询与热度监控')
     parser.add_argument('--interest', action='store_true',
-                        help='监控热度随时间变化（默认关键词 kinebox）并发送飞书')
+                        help='监控热度随时间变化（关键词从 Turso interest_keywords 读取）并发送飞书')
     parser.add_argument('--keywords', nargs='+',
-                        help='要查询的关键词列表；热度监控未指定时固定为 kinebox')
+                        help='要查询的关键词列表；热度监控若指定则不再读库')
     parser.add_argument('--timeframe', default=None,
                         help="时间范围，如 'now 1-d'、'now 7-d'、'today 12-m'、'last-2-d'")
     parser.add_argument('--geo', default='',

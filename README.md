@@ -80,7 +80,7 @@ https://1games.io/action.games             → 丢弃（分类页）
 ### Google Trends（`trends_tool/`）
 
 - 相关查询：按关键词拉取 related queries（热门 / 上升），结果写入项目根目录 `data/`（已 gitignore）
-- 热度监控：定时查 `kinebox` 近 1 天兴趣曲线，判断是否翻倍上升，结果发飞书
+- 热度监控：从 Turso `interest_keywords` 读启用中的词，查近 1 天兴趣曲线，判断是否翻倍上升，结果发飞书
 
 ## 环境要求
 
@@ -191,7 +191,7 @@ TURSO_DATABASE_URL=libsql://sitemap-games-xxxx.aws-ap-northeast-1.turso.io
 TURSO_AUTH_TOKEN=...
 ```
 
-`main.py` / `api.py` / `push_burst.py` 启动时读这两个变量。单测仍用临时本地 SQLite，不连线上库。
+`main.py` / `api.py` / `push_burst.py` / 热度监控共用这两个变量（热度词在同库表 `interest_keywords`，结构见 `trends_tool/schema.sql`）。单测仍用临时本地 SQLite，不连线上库。
 
 `data/games.db` 只作本机备份或一次性导入，**已从 Git 忽略**（`.gitignore` 的 `data/*.db`）。仓库索引里不再跟踪该文件；远程旧提交里的历史大文件还在，若要清历史需另做。
 
@@ -347,7 +347,7 @@ uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "
 # 多个关键词；只查美国
 uv run python trends_tool/trends_monitor.py --keywords game puzzle --timeframe "now 7-d" --geo US
 
-# 热度趋势监控（默认关键词 kinebox，近 1 天，发飞书）
+# 热度趋势监控（关键词从 Turso 读取，发飞书）
 uv run python trends_tool/trends_monitor.py --interest
 
 # 只查趋势、不发飞书
@@ -356,8 +356,8 @@ uv run python trends_tool/trends_monitor.py --interest --no-notify
 
 | 参数 | 含义 |
 |---|---|
-| `--interest` | 热度随时间监控（默认 `kinebox`）并发送飞书 |
-| `--keywords` | 相关查询必填；热度监控可用来覆盖默认词 |
+| `--interest` | 热度随时间监控（关键词从 Turso `interest_keywords` 读取）并发送飞书 |
+| `--keywords` | 相关查询必填；热度监控若指定则覆盖数据库 |
 | `--timeframe` | 时间范围；相关查询与热度监控默认均为 `now 1-d` |
 | `--geo` | 地区代码，空表示全球，如 `US`、`CN` |
 | `--output-dir` | 结果目录，默认项目根目录 `data/` |
@@ -402,10 +402,11 @@ uv run pytest
   - 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
   - 流程：`uv sync --frozen` → 运行 `main.py`
   - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
-- `.github/workflows/trends-interest-check.yml`：查 `kinebox` 热度趋势并飞书通知
+- `.github/workflows/trends-interest-check.yml`：从 Turso 读监控词、查热度趋势并飞书通知
   - 触发：`main` 上 `trends_tool/` 变更、每日定时（UTC 22:00 / 03:00，北京时间 06:00 / 12:00）、手动 `workflow_dispatch`
   - 流程：`uv sync --frozen` → `trends_tool/trends_monitor.py --interest`
-  - 飞书 webhook 读仓库内 `config.yaml`，无需额外 Secrets
+  - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`（与 sitemap 监控相同）
+  - 飞书 webhook 读仓库内 `config.yaml`
 
 ## 常用命令
 
@@ -423,5 +424,5 @@ uv run python push_burst.py --on 2026-08-16 # 只推指定日有新增的词
 uv run python push_burst.py --yesterday --dry-run  # 预览昨天的卡片，不发送
 uv run uvicorn api:app --reload --port 8001   # 启动查询 API
 uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "now 7-d"  # Trends 近 7 天相关查询
-uv run python trends_tool/trends_monitor.py --interest  # kinebox 热度监控并发飞书
+uv run python trends_tool/trends_monitor.py --interest  # 从 Turso 读词做热度监控并发飞书
 ```

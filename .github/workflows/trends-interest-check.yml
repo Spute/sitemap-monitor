@@ -32,4 +32,7 @@ jobs:
       run: uv sync --frozen --no-dev
 
     - name: Run interest monitor
+      env:
+        TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
       run: uv run python trends_tool/trends_monitor.py --interest
