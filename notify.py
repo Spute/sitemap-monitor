@@ -1,4 +1,4 @@
-"""飞书通知：跨站爆发热游卡片。"""
+"""飞书通知：跨站爆发热游卡片、Trends 热度监控卡片。"""
 
 import logging
 
@@ -87,6 +87,51 @@ def build_burst_card(burst_games, window_days):
             "header": {
                 "title": {"tag": "plain_text", "content": "🔥 跨站热游爆发"},
                 "template": "red",
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {"tag": "lark_md", "content": body},
+                }
+            ],
+        },
+    }
+
+
+def build_interest_trend_card(keyword, timeframe, geo, explore_url, rising_result, stats=None):
+    """构造飞书互动卡片：关键词 Google Trends 热度监控结果。"""
+    stats = stats or {}
+    rising = bool(rising_result.get('rising'))
+    verdict = "有明显上升（已翻倍）" if rising else "没有明显上升"
+    geo_text = geo or "全球"
+    explore_md = f"[{keyword}]({explore_url})" if explore_url else keyword
+
+    lines = [
+        f"**关键词**：{explore_md}",
+        f"**时间范围**：{timeframe}　**地区**：{geo_text}",
+        f"**判断**：{verdict}",
+        f"**说明**：{rising_result.get('reason') or '—'}",
+    ]
+    baseline = rising_result.get('baseline_mean')
+    recent = rising_result.get('recent_mean')
+    if baseline is not None and recent is not None:
+        lines.append(f"**基线均值**：{baseline}　**近端均值**：{recent}")
+    if stats.get('peak') is not None:
+        peak_at = stats.get('peak_at') or '—'
+        lines.append(f"**峰值**：{stats['peak']} @ {peak_at}")
+    if stats.get('latest') is not None:
+        latest_at = stats.get('latest_at') or '—'
+        lines.append(f"**最近**：{stats['latest']} @ {latest_at}")
+    if stats.get('points') is not None:
+        lines.append(f"**数据点数**：{stats['points']}")
+
+    body = "\n".join(lines)
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {"tag": "plain_text", "content": "📈 Google Trends 热度监控"},
+                "template": "red" if rising else "blue",
             },
             "elements": [
                 {

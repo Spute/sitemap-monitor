@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from build_trend_urls import DEFAULT_ANCHOR, build_trends_url
-from notify import build_burst_card, slug_to_trends_keyword
+from notify import build_burst_card, build_interest_trend_card, slug_to_trends_keyword
 from sitemap import matches_patterns, parse_txt, parse_xml, process_sitemap
 from slug import extract_slug, is_game_slug, to_game_entries
 from store import GameStore, is_store_auth_error, open_store, reopen_store
@@ -659,6 +659,40 @@ def test_build_burst_card_includes_zh():
     )
     body = card["card"]["elements"][0]["text"]["content"]
     assert "**[hill-sprint](https://1games.io/hill-sprint)**（山地冲刺）" in body
+
+
+def test_build_interest_trend_card():
+    card = build_interest_trend_card(
+        keyword="kinebox",
+        timeframe="now 7-d",
+        geo="",
+        explore_url="https://trends.google.com/trends/explore?q=kinebox&date=now+7-d&hl=zh-CN",
+        rising_result={
+            "rising": False,
+            "reason": "未达到翻倍（近端 10.0 / 基线 8.0，相对 25%，需至少 100%）",
+            "baseline_mean": 8.0,
+            "recent_mean": 10.0,
+        },
+        stats={"points": 42, "peak": 20, "peak_at": "2026-08-27", "latest": 9, "latest_at": "2026-08-27"},
+    )
+    assert card["card"]["header"]["title"]["content"] == "📈 Google Trends 热度监控"
+    assert card["card"]["header"]["template"] == "blue"
+    body = card["card"]["elements"][0]["text"]["content"]
+    assert "[kinebox](https://trends.google.com/trends/explore?q=kinebox&date=now+7-d&hl=zh-CN)" in body
+    assert "没有明显上升" in body
+    assert "基线均值**：8.0" in body
+    assert "峰值**：20" in body
+
+    rising_card = build_interest_trend_card(
+        keyword="kinebox",
+        timeframe="now 7-d",
+        geo="US",
+        explore_url="https://example.com",
+        rising_result={"rising": True, "reason": "已翻倍", "baseline_mean": 10, "recent_mean": 40},
+    )
+    assert rising_card["card"]["header"]["template"] == "red"
+    assert "有明显上升" in rising_card["card"]["elements"][0]["text"]["content"]
+    assert "US" in rising_card["card"]["elements"][0]["text"]["content"]
 
 
 def test_slug_to_phrase_and_cjk():

@@ -1,0 +1,27 @@
+# Google Trends 热度监控：定时查询 kinebox，结果发飞书
+name: Trends Interest Monitor
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 北京时间 07:00
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: uv sync --frozen --no-dev
+
+    - name: Run interest monitor
+      run: uv run python trends_tool/trends_monitor.py --interest

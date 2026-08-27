@@ -77,10 +77,10 @@ https://1games.io/action.games             → 丢弃（分类页）
 - 内置 OpenAPI 文档（Swagger / ReDoc），响应字段均有中文说明
 - 覆盖：爆发列表、热榜搜索、一词详情、事件流、按站查看
 
-### Google Trends 相关查询（`trends_tool/`）
+### Google Trends（`trends_tool/`）
 
-- 按关键词拉取 Google Trends 的 related queries（热门 / 上升），无定时任务、无通知
-- 结果写入项目根目录 `data/`（已 gitignore）
+- 相关查询：按关键词拉取 related queries（热门 / 上升），结果写入项目根目录 `data/`（已 gitignore）
+- 热度监控：定时查 `kinebox` 近 1 天兴趣曲线，判断是否翻倍上升，结果发飞书
 
 ## 环境要求
 
@@ -336,9 +336,9 @@ curl "http://127.0.0.1:8001/games/hill-sprint"
 curl "http://127.0.0.1:8001/sites/1Games/games?limit=20"
 ```
 
-## Google Trends 相关查询
+## Google Trends
 
-`trends_tool/` 只做查询，不跑定时任务、不发提醒。结果默认写到项目根目录 `data/`（如 `data/related_queries_tier list_<时间戳>.json`）。
+`trends_tool/` 查询结果默认写到项目根目录 `data/`。热度监控会发飞书（读 `config.yaml` 的 webhook）。
 
 ```bash
 # 查询「tier list」近 7 天相关查询（全球）
@@ -346,14 +346,22 @@ uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "
 
 # 多个关键词；只查美国
 uv run python trends_tool/trends_monitor.py --keywords game puzzle --timeframe "now 7-d" --geo US
+
+# 热度趋势监控（默认关键词 kinebox，近 1 天，发飞书）
+uv run python trends_tool/trends_monitor.py --interest
+
+# 只查趋势、不发飞书
+uv run python trends_tool/trends_monitor.py --interest --no-notify
 ```
 
 | 参数 | 含义 |
 |---|---|
-| `--keywords` | 要查询的关键词，必填，可多个 |
-| `--timeframe` | 时间范围，默认 `now 1-d`；常用 `now 7-d`、`today 12-m`、`last-2-d` |
+| `--interest` | 热度随时间监控（默认 `kinebox`）并发送飞书 |
+| `--keywords` | 相关查询必填；热度监控可用来覆盖默认词 |
+| `--timeframe` | 时间范围；相关查询与热度监控默认均为 `now 1-d` |
 | `--geo` | 地区代码，空表示全球，如 `US`、`CN` |
 | `--output-dir` | 结果目录，默认项目根目录 `data/` |
+| `--no-notify` | 热度监控时不发飞书 |
 
 也可用 `uv run python trends_tool/querytrends.py` 做单次示例查询（关键词写在脚本 `main()` 里）。
 
@@ -381,18 +389,23 @@ uv run pytest
 ├── config.yaml             # 站点 / 热度 / 通知配置
 ├── .env.example            # Turso 环境变量模板（复制为 .env，勿提交）
 ├── test_main.py / test_api.py
-├── trends_tool/            # Google Trends 相关查询（无定时 / 通知）
+├── trends_tool/            # Google Trends 相关查询与热度监控
 ├── data/                   # 本地输出（gitignore）：games.db、Trends JSON
 └── .github/workflows/      # GitHub Actions 定时监控
 ```
 
 ## GitHub Actions
 
-工作流：`.github/workflows/sitemap-check.yml`
+工作流：
 
-- 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
-- 流程：`uv sync --frozen` → 运行监控，结果写入 Turso（不再把数据库提交回仓库）
-- 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
+- `.github/workflows/sitemap-check.yml`：抓 sitemap、写入 Turso、跨站爆发飞书
+  - 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
+  - 流程：`uv sync --frozen` → 运行 `main.py`
+  - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
+- `.github/workflows/trends-interest-check.yml`：查 `kinebox` 热度趋势并飞书通知
+  - 触发：每天 UTC 23:00（北京时间 07:00）、手动 `workflow_dispatch`
+  - 流程：`uv sync --frozen` → `trends_tool/trends_monitor.py --interest`
+  - 飞书 webhook 读仓库内 `config.yaml`，无需额外 Secrets
 
 ## 常用命令
 
@@ -410,4 +423,5 @@ uv run python push_burst.py --on 2026-08-16 # 只推指定日有新增的词
 uv run python push_burst.py --yesterday --dry-run  # 预览昨天的卡片，不发送
 uv run uvicorn api:app --reload --port 8001   # 启动查询 API
 uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "now 7-d"  # Trends 近 7 天相关查询
+uv run python trends_tool/trends_monitor.py --interest  # kinebox 热度监控并发飞书
 ```
