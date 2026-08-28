@@ -9,9 +9,10 @@ on:
       - 'trends_tool/**'
       - '.github/workflows/trends-interest-check.yml'
   # 定时执行（GitHub cron 为 UTC）
+  # GitHub 官方明确提到，scheduled workflows 在整点附近可能因为高负载出现延迟，甚至可能被丢弃。
   schedule:
-    - cron: '0 22 * * *'  # 北京时间 06:00
-    - cron: '0 3 * * *'   # 北京时间 12:00，防止排队提前一个小时
+    - cron: '11 22 * * *'  # 北京时间 06:00
+    - cron: '11 3 * * *'   # 北京时间 12:00，防止排队提前一个小时
   workflow_dispatch:
 
 jobs:
