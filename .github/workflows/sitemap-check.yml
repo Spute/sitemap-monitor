@@ -1,5 +1,5 @@
-# Sitemap 监控工作流：定时或手动拉取 sitemap，结果写入 Turso
-name: Sitemap Monitor
+# 抓 sitemap 写入 Turso，并查 Google Trends 热度
+name: Monitor
 
 on:
   # 推送到 main 且相关文件变更时触发
@@ -12,36 +12,67 @@ on:
       - '*.py'
       - 'pyproject.toml'
       - 'uv.lock'
+      - 'trends_tool/**'
+      - '.github/workflows/sitemap-check.yml'
   # 定时执行（GitHub cron 为 UTC）
   # GitHub 官方明确提到，scheduled workflows 在整点附近可能因为高负载出现延迟，甚至可能被丢弃。
   schedule:
     - cron: '11 22 * * *'  # 北京时间 06:00
     - cron: '11 3 * * *'   # 北京时间 12:00，防止排队提前一个小时
-  # 支持在 Actions 页面手动触发
   workflow_dispatch:
+    inputs:
+      task:
+        description: 运行哪一项
+        type: choice
+        default: all
+        options:
+          - all
+          - sitemap
+          - trends
 
 jobs:
-  check:
+  sitemap:
+    if: github.event_name != 'workflow_dispatch' || inputs.task == 'all' || inputs.task == 'sitemap'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
     - name: Checkout code
       uses: actions/checkout@v7
 
-    # 安装 uv，并启用依赖缓存
     - name: Setup uv
       uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
         python-version: '3.12'
 
-    # 按 pyproject.toml / uv.lock 安装依赖
     - name: Install dependencies
       run: uv sync --frozen --no-dev
 
-    # 执行 sitemap 监控主脚本（数据写入 Turso，不再回写仓库）
     - name: Run Monitor
       env:
         TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
         TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
       run: uv run python main.py
+
+  trends:
+    if: github.event_name != 'workflow_dispatch' || inputs.task == 'all' || inputs.task == 'trends'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: uv sync --frozen --no-dev
+
+    - name: Run interest monitor
+      env:
+        TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      run: uv run python trends_tool/trends_monitor.py --interest

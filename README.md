@@ -2,7 +2,7 @@
 
 监控多个游戏站的 sitemap，从 URL 提取游戏关键词（slug），用跨站出现次数与近期扩散速度评估热度，并在发现跨站爆发时通过飞书通知。
 
-定时任务由 GitHub Actions 每天执行（UTC 22:00 / 北京时间次日 06:00），也可手动触发。
+定时任务由 GitHub Actions 每天执行两次（UTC 22:11 / 03:11，北京时间 06:11 / 11:11），也可手动触发。
 
 ## 目标
 
@@ -396,17 +396,13 @@ uv run pytest
 
 ## GitHub Actions
 
-工作流：
+工作流：`.github/workflows/sitemap-check.yml`（名称 Monitor）
 
-- `.github/workflows/sitemap-check.yml`：抓 sitemap、写入 Turso、跨站爆发飞书
-  - 触发：`main` 上相关文件变更、每日定时、手动 `workflow_dispatch`
-  - 流程：`uv sync --frozen` → 运行 `main.py`
-  - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
-- `.github/workflows/trends-interest-check.yml`：从 Turso 读监控词、查热度趋势并飞书通知
-  - 触发：`main` 上 `trends_tool/` 变更、每日定时（UTC 22:00 / 03:00，北京时间 06:00 / 12:00）、手动 `workflow_dispatch`
-  - 流程：`uv sync --frozen` → `trends_tool/trends_monitor.py --interest`
-  - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`（与 sitemap 监控相同）
-  - 飞书 webhook 读仓库内 `config.yaml`
+- 两个并行 job：`sitemap`（抓 sitemap、写 Turso、跨站爆发飞书）和 `trends`（从 Turso 读监控词、查热度并飞书）
+- 触发：`main` 上相关文件变更、每日定时（UTC 22:11 / 03:11，北京时间 06:11 / 11:11）、手动 `workflow_dispatch`
+- 手动触发时可选择 `all` / `sitemap` / `trends`
+- 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
+- 飞书 webhook 读仓库内 `config.yaml`
 
 ## 常用命令
 
