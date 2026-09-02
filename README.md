@@ -378,6 +378,7 @@ uv run pytest
 .
 ├── main.py                 # 监控入口编排
 ├── push_burst.py           # 基于当前 DB 手动推送飞书
+├── trigger_workflow.py     # 官方 API 远程触发 GitHub Actions
 ├── api.py                  # FastAPI 查询服务
 ├── schemas.py              # API 响应模型（OpenAPI）
 ├── slug.py                 # URL → 游戏词提取与噪音过滤
@@ -403,6 +404,16 @@ uv run pytest
 - 手动触发时可选择 `all` / `sitemap` / `trends`
 - 需在仓库 Secrets 中配置 `TURSO_DATABASE_URL`、`TURSO_AUTH_TOKEN`
 - 飞书 webhook 读仓库内 `config.yaml`
+- 本地可用 `trigger_workflow.py` 调官方 [workflow dispatch API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event) 远程触发
+
+```bash
+# .env 里放 GITHUB_TOKEN（或 GH_TOKEN），仓库可用 --repo / GITHUB_REPOSITORY / git origin
+uv run python trigger_workflow.py                      # Monitor，task=all
+uv run python trigger_workflow.py --task sitemap
+uv run python trigger_workflow.py --task trends --wait # 触发后打印 run 链接
+uv run python trigger_workflow.py --list               # 只看最近运行
+uv run python trigger_workflow.py --repo owner/repo --ref main
+```
 
 ## 常用命令
 
@@ -421,4 +432,7 @@ uv run python push_burst.py --yesterday --dry-run  # 预览昨天的卡片，不
 uv run uvicorn api:app --reload --port 8001   # 启动查询 API
 uv run python trends_tool/trends_monitor.py --keywords "tier list" --timeframe "now 7-d"  # Trends 近 7 天相关查询
 uv run python trends_tool/trends_monitor.py --interest  # 从 Turso 读词做热度监控并发飞书
+uv run python trigger_workflow.py                       # 远程触发 Actions Monitor
+uv run python trigger_workflow.py --task sitemap --wait  # 只触发sitemap任务
+uv run python trigger_workflow.py --task trends --wait #  触发trends任务后打印 run 链接
 ```
