@@ -74,7 +74,7 @@ def build_burst_card(burst_games, window_days):
         )
 
     parts = [
-        f"**近 {window_days} 天跨站爆发 {len(burst_games)} 个游戏词**",
+        f"**近 {window_days} 天跨站爆发 {len(burst_games)} 个词**",
         "\n\n".join(lines) if lines else "（无）",
     ]
     batch_section = _trends_batch_section([g['slug'] for g in shown])
@@ -85,7 +85,7 @@ def build_burst_card(burst_games, window_days):
         "msg_type": "interactive",
         "card": {
             "header": {
-                "title": {"tag": "plain_text", "content": "🔥 跨站热游爆发"},
+                "title": {"tag": "plain_text", "content": "🔥 跨站爆发"},
                 "template": "red",
             },
             "elements": [

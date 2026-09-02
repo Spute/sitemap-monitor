@@ -51,11 +51,11 @@ def process_site(site, store, today, burst_window_days):
             f"{site_name}: 抓到 {len(all_urls)} 个 URL，但过滤后无游戏词，请检查噪音规则或 game_path_marker"
         )
     else:
-        logging.info(f"{site_name}: 提取 {len(entries)} 个游戏词，开始同步")
+        logging.info(f"{site_name}: 提取 {len(entries)} 个词，开始同步")
     newly_seen = store.sync_site(site_name, entries, today, burst_window_days)
 
     if newly_seen:
-        logging.info(f"{site_name}: 新增 {len(newly_seen)} 个游戏词")
+        logging.info(f"{site_name}: 新增 {len(newly_seen)} 个词")
     else:
         logging.info(f"没有新增游戏: {site_name}")
     return newly_seen
@@ -102,7 +102,7 @@ def main(config_path='config.yaml'):
                 touched_slugs, burst_window_days, alert_threshold
             )
             if burst:
-                logging.info(f"跨站爆发 {len(burst)} 个游戏词，发送飞书通知")
+                logging.info(f"跨站爆发 {len(burst)} 个词，发送飞书通知")
                 attach_zh_names(burst, config)
                 send_feishu_notification(
                     build_burst_card(burst, burst_window_days), config
