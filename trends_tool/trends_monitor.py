@@ -13,6 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from config_loader import load_config
 from notify import build_interest_trend_card, send_feishu_notification
 from interest_store import load_interest_keywords
+from overlap_monitor import monitor_overlap
 from querytrends import (
     DEFAULT_DATA_DIR,
     _explore_page_url,
@@ -242,6 +243,13 @@ def main():
     parser = argparse.ArgumentParser(description='Google Trends 查询与热度监控')
     parser.add_argument('--interest', action='store_true',
                         help='监控热度随时间变化（关键词从 Turso interest_keywords 读取）并发送飞书')
+    parser.add_argument('--overlap', action='store_true',
+                        help='对比两个关键词当天前 N 相关查询词，交集非空则发飞书')
+    parser.add_argument('--overlap-keywords', nargs=2, default=None,
+                        metavar=('KW1', 'KW2'),
+                        help='overlap 模式对比的两个关键词，默认 codes 与 "tier list"')
+    parser.add_argument('--overlap-top-n', type=int, default=None,
+                        help='overlap 模式每个词取前 N 条相关查询（默认 5）')
     parser.add_argument('--keywords', nargs='+',
                         help='要查询的关键词列表；热度监控若指定则不再读库')
     parser.add_argument('--timeframe', default=None,
@@ -264,6 +272,16 @@ def main():
             timeframe=args.timeframe or DEFAULT_INTEREST_TIMEFRAME,
             geo=args.geo,
             output_dir=args.output_dir,
+            notify=not args.no_notify,
+        )
+        return
+
+    if args.overlap:
+        monitor_overlap(
+            keywords=args.overlap_keywords,
+            timeframe=args.timeframe,
+            geo=args.geo,
+            top_n=args.overlap_top_n or 5,
             notify=not args.no_notify,
         )
         return

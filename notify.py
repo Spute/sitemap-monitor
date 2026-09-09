@@ -143,6 +143,53 @@ def build_interest_trend_card(keyword, timeframe, geo, explore_url, rising_resul
     }
 
 
+def build_overlap_card(result):
+    """构造飞书互动卡片：两个关键词当天前 N 相关查询词的交集结果。
+
+    result 字段：keywords, timeframe, geo, top_n, per_keyword, common, explore_url。
+    仅在交集非空时由调用方决定是否发送。
+    """
+    keywords = result["keywords"]
+    per_keyword = result.get("per_keyword", {})
+    common = result.get("common", [])
+    timeframe = result.get("timeframe", "")
+    geo = result.get("geo", "")
+    geo_text = geo or "全球"
+    top_n = result.get("top_n", 5)
+    explore_url = result.get("explore_url", "")
+
+    common_md = ", ".join(common) if common else "无"
+    lines = [
+        f"**对比词**：{keywords[0]} vs {keywords[1]}",
+        f"**时间范围**：{timeframe}　**地区**：{geo_text}",
+        f"**交集关键词 ({len(common)})**：{common_md}",
+    ]
+    for kw in keywords:
+        items = per_keyword.get(kw, [])
+        list_md = "\n".join(f"• {it}" for it in items) if items else "—"
+        lines.append(f"\n**{kw} 前 {top_n} 相关查询**：\n{list_md}")
+
+    if explore_url:
+        lines.append(f"\n[Trends 对比页]({explore_url})")
+
+    body = "\n".join(lines)
+    return {
+        "msg_type": "interactive",
+        "card": {
+            "header": {
+                "title": {"tag": "plain_text", "content": "🔍 Trends 相关查询交集"},
+                "template": "orange" if common else "blue",
+            },
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {"tag": "lark_md", "content": body},
+                }
+            ],
+        },
+    }
+
+
 def send_feishu_notification(message_card, config):
     """发送飞书 Webhook，失败重试最多 3 次。"""
     webhook_url = config['feishu']['webhook_url']
