@@ -7,6 +7,7 @@
 
 import logging
 import random
+import threading
 import time
 from pathlib import Path
 from urllib.parse import quote
@@ -26,6 +27,10 @@ from querytrends import get_related_queries
 DEFAULT_TOP_N = 5
 DEFAULT_KEYWORDS = ["codes", "tier list"]
 DEFAULT_DELAY_BETWEEN_QUERIES = 5
+# 单个关键词查询的硬超时（秒）。querytrends.get_related_queries 遇到配额超限会
+# 在 while True 里 sleep 300~360s 反复重试，可能把整个 job 拖到超时。
+# 这里用线程兜底，超时就放弃该词、记为无数据并继续下一个。
+DEFAULT_QUERY_TIMEOUT_SEC = 480
 TRENDS_BASE = "https://trends.google.com/trends/explore"
 
 
@@ -66,6 +71,38 @@ def _top_queries(related_data, n=DEFAULT_TOP_N):
     return queries
 
 
+def _call_with_timeout(fn, timeout_sec):
+    """在 daemon 线程里跑 fn；超时抛 TimeoutError，避免被无限重试循环卡住。"""
+    box = {}
+
+    def runner():
+        try:
+            box["result"] = fn()
+        except Exception as exc:  # noqa: BLE001
+            box["error"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True)
+    thread.start()
+    thread.join(timeout_sec)
+    if thread.is_alive():
+        raise TimeoutError(f"超过 {timeout_sec}s 未返回")
+    if "error" in box:
+        raise box["error"]
+    return box.get("result")
+
+
+def _query_with_timeout(keyword, geo, timeframe, timeout_sec):
+    """带硬超时地获取相关查询；超时或异常返回 None。"""
+    try:
+        return _call_with_timeout(
+            lambda: get_related_queries(keyword, geo=geo, timeframe=timeframe),
+            timeout_sec,
+        )
+    except TimeoutError as e:
+        logging.error("查询 %s 超时，跳过: %s", keyword, e)
+        return None
+
+
 def monitor_overlap(
     keywords=None,
     timeframe=None,
@@ -74,6 +111,7 @@ def monitor_overlap(
     notify=True,
     config_path=None,
     delay_between_queries=DEFAULT_DELAY_BETWEEN_QUERIES,
+    query_timeout_sec=DEFAULT_QUERY_TIMEOUT_SEC,
 ):
     """对比两个关键词当天前 N 相关查询词，存在交集则发飞书。
 
@@ -82,7 +120,8 @@ def monitor_overlap(
         timeframe: Trends 时间范围；默认当天单日。
         geo: 地区代码，空表示全球。
         top_n: 每个词取前 N 条相关查询。
-        notify: 是否发送飞书通知（仅交集非空时发送）。
+        notify: 是否发送飞书通知。
+        query_timeout_sec: 单个关键词查询的硬超时秒数，超时则跳过该词。
     """
     keywords = [k for k in (keywords or DEFAULT_KEYWORDS) if k and k.strip()]
     if len(keywords) != 2:
@@ -93,21 +132,18 @@ def monitor_overlap(
     config = load_config(config_file) if notify else None
 
     logging.info(
-        "Overlap monitor: keywords=%s timeframe=%s geo=%s top_n=%d",
+        "Overlap monitor: keywords=%s timeframe=%s geo=%s top_n=%d query_timeout=%ss",
         keywords,
         timeframe,
         geo or "全球",
         top_n,
+        query_timeout_sec,
     )
 
     per_keyword = {}
     for i, kw in enumerate(keywords):
         logging.info("查询相关查询: %s", kw)
-        try:
-            data = get_related_queries(kw, geo=geo, timeframe=timeframe)
-        except Exception as e:
-            logging.error("查询 %s 失败: %s", kw, e)
-            data = None
+        data = _query_with_timeout(kw, geo, timeframe, query_timeout_sec)
         per_keyword[kw] = _top_queries(data, top_n)
         logging.info("%s 前 %d 相关查询: %s", kw, top_n, per_keyword[kw])
 

@@ -250,6 +250,8 @@ def main():
                         help='overlap 模式对比的两个关键词，默认 codes 与 "tier list"')
     parser.add_argument('--overlap-top-n', type=int, default=None,
                         help='overlap 模式每个词取前 N 条相关查询（默认 5）')
+    parser.add_argument('--query-timeout', type=float, default=None,
+                        help='单个关键词查询的硬超时秒数（默认 480），超时跳过该词')
     parser.add_argument('--keywords', nargs='+',
                         help='要查询的关键词列表；热度监控若指定则不再读库')
     parser.add_argument('--timeframe', default=None,
@@ -283,6 +285,7 @@ def main():
             geo=args.geo,
             top_n=args.overlap_top_n or 5,
             notify=not args.no_notify,
+            query_timeout_sec=args.query_timeout or 480,
         )
         return
 
