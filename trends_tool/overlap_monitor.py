@@ -133,12 +133,12 @@ def monitor_overlap(
         "explore_url": explore_url,
     }
 
-    if common and notify and config:
+    if notify and config:
         card = build_overlap_card(result)
         ok = send_feishu_notification(card, config)
         if not ok:
             logging.error("飞书通知发送失败（overlap）")
     else:
-        logging.info("无交集关键词，不发飞书通知")
+        logging.info("未启用飞书通知")
 
     return result

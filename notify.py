@@ -159,8 +159,14 @@ def build_overlap_card(result):
     explore_url = result.get("explore_url", "")
 
     common_md = ", ".join(common) if common else "无"
+    compare_label = f"{keywords[0]}, {keywords[1]}"
+    compare_md = (
+        f"[{compare_label}]({explore_url})"
+        if explore_url
+        else compare_label
+    )
     lines = [
-        f"**对比词**：{keywords[0]} vs {keywords[1]}",
+        f"**对比词**：{compare_md}",
         f"**时间范围**：{timeframe}　**地区**：{geo_text}",
         f"**交集关键词 ({len(common)})**：{common_md}",
     ]
