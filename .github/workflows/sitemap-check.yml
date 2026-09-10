@@ -32,6 +32,29 @@ on:
           - overlap
 
 jobs:
+  overlap:
+    if: github.event_name != 'workflow_dispatch' || inputs.task == 'all' || inputs.task == 'overlap'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Setup uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: uv sync --frozen --no-dev
+
+    - name: Run overlap monitor (codes vs tier list, 当天)
+      env:
+        TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+        TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      run: uv run python trends_tool/trends_monitor.py --overlap --overlap-keywords codes "tier list"
+
   sitemap:
     if: github.event_name != 'workflow_dispatch' || inputs.task == 'all' || inputs.task == 'sitemap'
     runs-on: ubuntu-latest
@@ -78,25 +101,3 @@ jobs:
         TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
       run: uv run python trends_tool/trends_monitor.py --interest
 
-  overlap:
-    if: github.event_name != 'workflow_dispatch' || inputs.task == 'all' || inputs.task == 'overlap'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v7
-
-    - name: Setup uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        enable-cache: true
-        python-version: '3.12'
-
-    - name: Install dependencies
-      run: uv sync --frozen --no-dev
-
-    - name: Run overlap monitor (codes vs tier list, 当天)
-      env:
-        TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-        TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-      run: uv run python trends_tool/trends_monitor.py --overlap --overlap-keywords codes "tier list"

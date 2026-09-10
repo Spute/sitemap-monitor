@@ -8,7 +8,6 @@
 import logging
 import random
 import time
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -31,9 +30,8 @@ TRENDS_BASE = "https://trends.google.com/trends/explore"
 
 
 def today_timeframe():
-    """返回当天单日 timeframe，如 '2026-09-09 2026-09-09'。"""
-    today = datetime.now().strftime("%Y-%m-%d")
-    return f"{today} {today}"
+    """返回当天单日 timeframe，用 Trends 的 'now 1-d' 表示当天。"""
+    return "now 1-d"
 
 
 def _explore_compare_url(keywords, timeframe, geo=""):
